@@ -2,7 +2,7 @@ use eframe::egui;
 use egui_extras::install_image_loaders;
 use std::f32::consts::PI;
 
-mod definitions;
+use common::definitions;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize)]
