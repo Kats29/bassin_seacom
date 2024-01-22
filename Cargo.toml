@@ -1,0 +1,11 @@
+[workspace]
+
+members = [
+    "backend",
+    "frontend",
+
+    #Internal
+    "common"
+]
+
+workspace.resolver = "1"
