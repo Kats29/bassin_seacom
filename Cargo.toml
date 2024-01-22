@@ -8,4 +8,4 @@ members = [
     "common"
 ]
 
-workspace.resolver = "1"
+workspace.resolver = "2"

@@ -15,7 +15,7 @@ fn main() {
             .start(
                 "interface_bassin", // hardcode it
                 web_options,
-                Box::new(|cc| Box::new(TemplateApp::new(cc))),
+                Box::new(|cc| Box::new(TemplateApp::new(cc)))
             )
             .await
             .expect("failed to start eframe");

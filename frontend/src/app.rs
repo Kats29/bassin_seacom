@@ -1,17 +1,25 @@
 use eframe::egui;
 use egui_extras::install_image_loaders;
-use std::f32::consts::PI;
+use serde::{Serialize, Deserialize};
+use serde_json;
+use std::{
+    f32::consts::PI,
+    net::TcpStream,
+    io::{Read, Write},
+    str::from_utf8,
+};
 
 use common::definitions;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct TemplateApp {
     left: definitions::Arm,
     right: definitions::Arm,
 
-    //#[serde(skip)] // This how you opt-out of serialization of a field
+    #[serde(skip)]
+    stream: TcpStream
 }
 
 impl Default for TemplateApp {
@@ -20,9 +28,11 @@ impl Default for TemplateApp {
         left_arm.set_next(left_arm.position());
         let mut right_arm = definitions::Arm::new(false);
         right_arm.set_next(right_arm.position());
+
         Self {
             left: left_arm,
-            right: right_arm
+            right: right_arm,
+            stream: TcpStream::connect("localhost::3333").expect("Unable to connect")
         }
     }
 }
@@ -39,7 +49,14 @@ impl TemplateApp {
             return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
         }
 
-        Default::default()
+        let mut default: TemplateApp = Default::default();
+
+        /*default.stream = match TcpStream::connect("localhost::3333") {
+            Ok(s) => Some(s),
+            Err(_) => None
+        };*/
+
+        return default;
     }
 
     /// Defines the look of the left and right side panels
@@ -310,6 +327,30 @@ impl TemplateApp {
                 });
             });
     }
+
+    pub fn origin(&mut self) {
+        self.left.origin();
+        self.right.origin();
+
+        let msg = &serde_json::to_string(&self)
+            .expect("JSON conversion error")
+            .into_bytes();
+        self.stream
+            .write(msg)
+            .expect("Communication error");
+    }
+
+    pub fn move_next(&mut self) {
+        self.left.move_next();
+        self.right.move_next();
+
+        let msg = &serde_json::to_string(&self)
+            .expect("JSON conversion error")
+            .into_bytes();
+        self.stream
+            .write(msg)
+            .expect("Communication error");
+    }
 }
 
 impl eframe::App for TemplateApp {
@@ -361,12 +402,10 @@ impl eframe::App for TemplateApp {
             // The central panel the region left after adding TopPanel's and SidePanel's
             ui.horizontal(|ui| {
                 if ui.button("Origine").clicked() {
-                    self.left.origin();
-                    self.right.origin();
+                    self.origin();
                 }
                 if ui.button("Go").clicked() {
-                    self.left.move_next();
-                    self.right.move_next();
+                    self.move_next();
                 }
             });
             ui.add_space(10.0);
