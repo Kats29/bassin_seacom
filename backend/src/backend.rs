@@ -1,4 +1,3 @@
-use libbeaglebone as bb;
 use bb::{
     gpio::{
         GPIO,
@@ -6,7 +5,8 @@ use bb::{
     },
     prelude::PinState
 };
-use std::thread;
+
+use libbeaglebone as bb;
 
 pub enum DriverType {
     X,
