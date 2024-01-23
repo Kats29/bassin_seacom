@@ -2,11 +2,12 @@
 #![cfg(target_arch = "wasm32")]
 
 mod app;
+
 pub use app::TemplateApp;
 
 fn main() {
     // Redirect `log` message to `console.log` and friends:
-    eframe::WebLogger::init(log::LevelFilter::Debug).ok();
+    unsafe { eframe::WebLogger::init(log::LevelFilter::Debug).ok(); }
 
     let web_options = eframe::WebOptions::default();
 
