@@ -414,6 +414,9 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 [[package]]
 name = "backend"
 version = "0.1.0"
+dependencies = [
+ "gpio",
+]
 
 [[package]]
 name = "base64"
@@ -1416,6 +1419,12 @@ checksum = "ef89398e90033fc6bc65e9bd42fd29bbbfd483bda5b56dc5562f455550618165"
 dependencies = [
  "gl_generator",
 ]
+
+[[package]]
+name = "gpio"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fe6783270536547ac473c9d2ae5a7e0e715ea43f29004ced47fbd1c1372d2c7"
 
 [[package]]
 name = "half"
