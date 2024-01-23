@@ -13,6 +13,7 @@ mod backend;
 
 fn main() -> sysfs_gpio::Result<()> {
     let mut driver = DriverCN::new(true, DriverType::X).unwrap();
+    driver.reset()?;
     // driver.go()?;
     println!("Hello, world! De Goulven");
     let mut value = false;
