@@ -12,7 +12,7 @@ use crate::backend::{
 mod backend;
 
 fn main() -> sysfs_gpio::Result<()> {
-    let mut driver = backend::DriverCN::new(true, DriverType::X).unwrap();
+    let mut driver = DriverCN::new(true, DriverType::X).unwrap();
     // driver.go()?;
     println!("Hello, world! De Goulven");
     let mut value = false;
