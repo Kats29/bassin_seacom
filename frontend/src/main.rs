@@ -7,7 +7,8 @@ pub use app::TemplateApp;
 
 fn main() {
     // Redirect `log` message to `console.log` and friends:
-    unsafe { eframe::WebLogger::init(log::LevelFilter::Debug).ok(); }
+    eframe::WebLogger::init(log::LevelFilter::Debug)
+        .expect("Couldn't start weblogger");
 
     let web_options = eframe::WebOptions::default();
 

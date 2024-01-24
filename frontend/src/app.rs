@@ -19,7 +19,7 @@ pub struct TemplateApp {
     right: definitions::Arm,
 
     #[serde(skip)]
-    stream: TcpStream
+    stream: Option<TcpStream>
 }
 
 impl Default for TemplateApp {
@@ -32,7 +32,7 @@ impl Default for TemplateApp {
         Self {
             left: left_arm,
             right: right_arm,
-            stream: TcpStream::connect("localhost::3333").expect("Unable to connect")
+            stream: None
         }
     }
 }
@@ -51,12 +51,14 @@ impl TemplateApp {
 
         let mut default: TemplateApp = Default::default();
 
-        /*default.stream = match TcpStream::connect("localhost::3333") {
-            Ok(s) => Some(s),
-            Err(_) => None
-        };*/
+        default.connect("beaglebone.local:3333");
 
         return default;
+    }
+
+    pub fn connect(&mut self, url: &str) {
+        self.stream = TcpStream::connect(url).ok();
+        println!("Successfully connected to {}", url);
     }
 
     /// Defines the look of the left and right side panels
@@ -328,28 +330,31 @@ impl TemplateApp {
             });
     }
 
+    pub fn send(&mut self) {
+        let data = (self.left, self.right);
+
+        let msg = &serde_json::to_string(&data)
+            .expect("JSON conversion error")
+            .into_bytes();
+        match &mut self.stream {
+            Some(stream) => stream.write(msg).unwrap(),
+            None => {
+                println!("TCP stream not found");
+                0
+            }
+        };
+    }
+
     pub fn origin(&mut self) {
         self.left.origin();
         self.right.origin();
-
-        let msg = &serde_json::to_string(&self)
-            .expect("JSON conversion error")
-            .into_bytes();
-        self.stream
-            .write(msg)
-            .expect("Communication error");
+        self.send();
     }
 
     pub fn move_next(&mut self) {
         self.left.move_next();
         self.right.move_next();
-
-        let msg = &serde_json::to_string(&self)
-            .expect("JSON conversion error")
-            .into_bytes();
-        self.stream
-            .write(msg)
-            .expect("Communication error");
+        self.send();
     }
 }
 

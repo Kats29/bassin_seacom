@@ -1,4 +1,4 @@
-#[derive(serde::Deserialize, serde::Serialize, Copy, Clone)]
+#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
 #[serde(default)]
 pub struct Position {
     x: f32,
@@ -82,7 +82,7 @@ impl Position {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Copy, Clone)]
+#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
 #[serde(default)]
 pub struct Arm {
     position: Position,

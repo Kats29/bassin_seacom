@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 sysfs_gpio = "0.6.1"
 log = "0.4.20"
+serde_json = "1.0.111"
+common = { version = "0.1.0", path = "../common" }
 
 [build.env]
 # Needed for libudev to cross-compile properly on ARM systems
