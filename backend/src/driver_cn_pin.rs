@@ -107,9 +107,9 @@ impl DriverCnPin {
         driver.pin_zero = Pin::new(pin_zero as u64);
         driver.pin_fin_mvt = Pin::new(pin_fin_mvt as u64);
 
-        driver.set_direction()?;
-
         driver.set_export()?;
+
+        driver.set_direction()?;
 
         return Ok(driver);
     }
