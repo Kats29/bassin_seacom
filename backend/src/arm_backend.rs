@@ -43,12 +43,19 @@ impl ArmsBackend{
         return bras;
 
     }
-    pub fn set_pos_e(&mut self,pos_e: Position){
+    fn set_pos_e(&mut self,pos_e: Position){
         self.bras_emetteur.set_position(pos_e);
     }
-    pub fn set_pos_r(&mut self,pos_r: Position){
+    fn set_pos_r(&mut self,pos_r: Position){
         self.bras_recepteur.set_position(pos_r);
     }
+
+    pub fn update(&mut self, arm_e: Arm, arm_r:Arm){
+        self.set_pos_e(arm_e.position());
+        self.set_pos_r(arm_r.position())
+    }
+
+
     pub fn go(&mut self) -> sysfs_gpio::Result<()>{
         // A changer pour plus de synchro
         self.driver_x_emetteur.go().expect("Le moteur X emetteur est encore actif");
