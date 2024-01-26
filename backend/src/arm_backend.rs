@@ -1,8 +1,7 @@
 use common::definitions::{Arm, Position};
 use crate::driver_cn_pin::{DriverCnPin, DriverType};
-
-
-struct ArmsBackend{
+use  crate::drivers_cn_rs232::DriversCnRs232;
+pub struct ArmsBackend{
     bras_emetteur: Arm,
     bras_recepteur: Arm,
     driver_x_emetteur: DriverCnPin,
@@ -15,6 +14,8 @@ struct ArmsBackend{
     driver_y_recepteur: DriverCnPin,
     driver_z_recepteur: DriverCnPin,
     driver_t_recepteur: DriverCnPin,
+
+    driver_rs232 : DriversCnRs232,
 }
 
 impl Default for ArmsBackend {
