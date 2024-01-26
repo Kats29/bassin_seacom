@@ -33,6 +33,9 @@ impl Default for ArmsBackend {
             driver_y_recepteur: DriverCnPin::new(false,DriverType::Y).expect("Erreur lors de la création de l'interface pour la CN Y réceptrice"),
             driver_z_recepteur: DriverCnPin::new(false,DriverType::Z).expect("Erreur lors de la création de l'interface pour la CN Z réceptrice"),
             driver_t_recepteur: DriverCnPin::new(false,DriverType::THETA).expect("Erreur lors de la création de l'interface pour la CN Théta réceptrice"),
+
+            driver_rs232: DriversCnRs232::new(),
+
         }
     }
 }
