@@ -23,14 +23,14 @@ impl Default for ArmsBackend {
             bras_emetteur: Arm::new(true),
             bras_recepteur: Arm::new(false),
 
-            driver_x_emetteur: DriverCnPin::new(true,DriverType::X).expect("Erreur lors de la création de l'interface poour la CN X éméteuse"),
-            driver_y_emetteur: DriverCnPin::new(true,DriverType::Y).expect("Erreur lors de la création de l'interface poour la CN Y éméteuse"),
-            driver_z_emetteur: DriverCnPin::new(true,DriverType::Z).expect("Erreur lors de la création de l'interface poour la CN Z éméteuse"),
-            driver_t_emetteur: DriverCnPin::new(true,DriverType::THETA).expect("Erreur lors de la création de l'interface poour la CN Théta éméteuse"),
-            driver_x_recepteur: DriverCnPin::new(false,DriverType::X).expect("Erreur lors de la création de l'interface poour la CN X récepteur"),
-            driver_y_recepteur: DriverCnPin::new(false,DriverType::Y).expect("Erreur lors de la création de l'interface poour la CN Y récepteur"),
-            driver_z_recepteur: DriverCnPin::new(false,DriverType::Z).expect("Erreur lors de la création de l'interface poour la CN Z récepteur"),
-            driver_t_recepteur: DriverCnPin::new(false,DriverType::THETA).expect("Erreur lors de la création de l'interface poour la CN Théta récepteur"),
+            driver_x_emetteur: DriverCnPin::new(true,DriverType::X).expect("Erreur lors de la création de l'interface pour la CN X émettrice"),
+            driver_y_emetteur: DriverCnPin::new(true,DriverType::Y).expect("Erreur lors de la création de l'interface pour la CN Y émettrice"),
+            driver_z_emetteur: DriverCnPin::new(true,DriverType::Z).expect("Erreur lors de la création de l'interface pour la CN Z émettrice"),
+            driver_t_emetteur: DriverCnPin::new(true,DriverType::THETA).expect("Erreur lors de la création de l'interface pour la CN Théta émettrice"),
+            driver_x_recepteur: DriverCnPin::new(false,DriverType::X).expect("Erreur lors de la création de l'interface pour la CN X réceptrice"),
+            driver_y_recepteur: DriverCnPin::new(false,DriverType::Y).expect("Erreur lors de la création de l'interface pour la CN Y réceptrice"),
+            driver_z_recepteur: DriverCnPin::new(false,DriverType::Z).expect("Erreur lors de la création de l'interface pour la CN Z réceptrice"),
+            driver_t_recepteur: DriverCnPin::new(false,DriverType::THETA).expect("Erreur lors de la création de l'interface pour la CN Théta réceptrice"),
         }
     }
 }
