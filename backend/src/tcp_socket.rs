@@ -1,14 +1,13 @@
 use std::{
     net::{TcpListener, TcpStream, Shutdown},
-    io::Read,
-    thread
+    io::Read
 };
 use serde_json;
 use common::definitions::Arm;
 
 use crate::arm_backend::ArmsBackend;
 
-fn handle_client(mut stream: TcpStream, mut drivers: ArmsBarckend) {
+fn handle_client(mut stream: TcpStream, drivers: &mut ArmsBackend) {
     let mut data = [0 as u8; 300]; // using 300 byte buffer
     while match stream.read(&mut data) {
         Ok(size) => {
@@ -38,9 +37,7 @@ pub fn tcp_listen(mut drivers: ArmsBackend) -> std::io::Result<()> {
     for stream_res in listener.incoming() {
         let stream= stream_res?;
         println!("New connection: {}", stream.peer_addr().unwrap());
-        thread::spawn(move || {
-            handle_client(stream, drivers)
-        });
+        handle_client(stream, &mut drivers);
     }
     // close the socket server
     drop(listener);

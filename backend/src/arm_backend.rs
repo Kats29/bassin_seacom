@@ -2,7 +2,7 @@ use common::definitions::{Arm, Position};
 use crate::driver_cn_pin::{DriverCnPin, DriverType};
 
 
-struct ArmsBackend{
+pub struct ArmsBackend{
     bras_emetteur: Arm,
     bras_recepteur: Arm,
     driver_x_emetteur: DriverCnPin,
