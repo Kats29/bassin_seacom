@@ -6,7 +6,9 @@ use std::{
 use serde_json;
 use common::definitions::Arm;
 
-fn handle_client(mut stream: TcpStream/*, mut drivers: TODO*/) {
+use crate::arm_backend::ArmsBackend;
+
+fn handle_client(mut stream: TcpStream, mut drivers: ArmsBarckend) {
     let mut data = [0 as u8; 300]; // using 300 byte buffer
     while match stream.read(&mut data) {
         Ok(size) => {
@@ -14,7 +16,7 @@ fn handle_client(mut stream: TcpStream/*, mut drivers: TODO*/) {
             match serde_json::from_slice(&data[0..size]) {
                 Ok(json) => {
                     (left, right) = json;
-                    //drivers.update(left, right);
+                    drivers.update(left, right);
                     println!("Data received : \n{:?}\n{:?}", left, right);
                 },
                 Err(_) => println!("Unrecognizable data : {}", std::str::from_utf8(&data[0..size]).unwrap())
@@ -29,7 +31,7 @@ fn handle_client(mut stream: TcpStream/*, mut drivers: TODO*/) {
     } {}
 }
 
-pub fn tcp_listen(/*mut drivers: TODO*/) -> std::io::Result<()> {
+pub fn tcp_listen(mut drivers: ArmsBackend) -> std::io::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:3333")?;
     // accept connections and process them, spawning a new thread for each one
     println!("Server listening on port 3333");
@@ -37,7 +39,7 @@ pub fn tcp_listen(/*mut drivers: TODO*/) -> std::io::Result<()> {
         let stream= stream_res?;
         println!("New connection: {}", stream.peer_addr().unwrap());
         thread::spawn(move || {
-            handle_client(stream/*, drivers*/)
+            handle_client(stream, drivers)
         });
     }
     // close the socket server

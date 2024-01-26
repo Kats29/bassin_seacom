@@ -1,10 +1,6 @@
 mod tcp_socket;
 mod arm_backend;
-mod driver_cn_pin;
 
-
-fn main() -> sysfs_gpio::Result<()> {
-    tcp_socket::tcp_listen();
-    Ok(())
+fn main() -> std::io::Result<()> {
+    tcp_socket::tcp_listen(arm_backend::ArmBackend::default())
 }
-
