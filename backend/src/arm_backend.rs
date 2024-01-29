@@ -29,7 +29,7 @@ impl Default for ArmsBackend {
             driver_z_recepteur: DriverCnPin::new(false,DriverType::Z).expect("Erreur lors de la création de l'interface pour la CN Z réceptrice"),
             driver_t_recepteur: DriverCnPin::new(false,DriverType::THETA).expect("Erreur lors de la création de l'interface pour la CN Théta réceptrice"),
 
-            driver_rs232: DriversCnRs232::new()?,
+            driver_rs232: DriversCnRs232::new().expect("Erreur lors de la création du Drivers RS232"),
 
         }
     }
@@ -38,8 +38,6 @@ impl Default for ArmsBackend {
 impl ArmsBackend{
     pub fn new(pos_e: Position, pos_r: Position) -> Self{
         let mut bras = Self::default();
-        bras.set_pos_e(pos_e);
-        bras.set_pos_r(pos_r);
         return bras;
 
     }
@@ -48,14 +46,14 @@ impl ArmsBackend{
         let bytes_positions_e = arm_e.position().to_bytes();
         let bytes_positions_r = arm_r.position().to_bytes();
 
-        self.driver_rs232.write_i2c(&*bytes_positions_e[0],I2cAddr::AddrXE)?;
-        self.driver_rs232.write_i2c(&*bytes_positions_e[1],I2cAddr::AddrYE)?;
-        self.driver_rs232.write_i2c(&*bytes_positions_e[2],I2cAddr::AddrZE)?;
-        self.driver_rs232.write_i2c(&*bytes_positions_e[3],I2cAddr::AddrTE)?;
-        self.driver_rs232.write_i2c(&*bytes_positions_r[0],I2cAddr::AddrXR)?;
-        self.driver_rs232.write_i2c(&*bytes_positions_r[1],I2cAddr::AddrYR)?;
-        self.driver_rs232.write_i2c(&*bytes_positions_r[2],I2cAddr::AddrZR)?;
-        self.driver_rs232.write_i2c(&*bytes_positions_r[3],I2cAddr::AddrTR)?;
+        self.driver_rs232.write_i2c(&bytes_positions_e[0],I2cAddr::AddrXE)?;
+        self.driver_rs232.write_i2c(&bytes_positions_e[1],I2cAddr::AddrYE)?;
+        self.driver_rs232.write_i2c(&bytes_positions_e[2],I2cAddr::AddrZE)?;
+        self.driver_rs232.write_i2c(&bytes_positions_e[3],I2cAddr::AddrTE)?;
+        self.driver_rs232.write_i2c(&bytes_positions_r[0],I2cAddr::AddrXR)?;
+        self.driver_rs232.write_i2c(&bytes_positions_r[1],I2cAddr::AddrYR)?;
+        self.driver_rs232.write_i2c(&bytes_positions_r[2],I2cAddr::AddrZR)?;
+        self.driver_rs232.write_i2c(&bytes_positions_r[3],I2cAddr::AddrTR)?;
 
         self.go()?;
 
