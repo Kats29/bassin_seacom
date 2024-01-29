@@ -100,4 +100,8 @@ impl ArmsBackend{
         self.driver_t_recepteur.zero().expect("Le moteur Théta recepteur est encore actif");
         Ok(())
     }
+
+    fn get_driver_rs232(self) -> DriversCnRs232{
+        self.driver_rs232
+    }
 }
