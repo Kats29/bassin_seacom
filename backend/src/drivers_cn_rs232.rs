@@ -36,7 +36,6 @@ const ADDR_Y_R: u8= 0x39;
 const ADDR_Z_R: u8 = 0x39;
 const ADDR_T_R: u8 = 0x39;
 
-#[derive(Clone)]
 pub struct DriversCnRs232{
     i2c_handler: Option<I2c<File>>
 }
@@ -59,7 +58,7 @@ impl DriversCnRs232{
         Ok(driver)
     }
 
-    pub fn write_i2c(self, data: &[u8],addr_cn : I2cAddr) -> std::io::Result<()>{
+    pub fn write_i2c(&self, data: &[u8],addr_cn : I2cAddr) -> std::io::Result<()>{
         let i2c_addr = get_i2c_addr_value(addr_cn);
 
         println!("set addr slave to :{}",i2c_addr);

@@ -4,5 +4,5 @@ mod driver_cn_pin;
 mod drivers_cn_rs232;
 
 fn main() -> std::io::Result<()> {
-    tcp_socket::tcp_listen(arm_backend::ArmsBackend::default())
+    tcp_socket::tcp_listen(arm_backend::ArmsBackend::new())
 }

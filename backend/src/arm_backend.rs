@@ -40,25 +40,25 @@ impl ArmsBackend{
         return Self::default();
     }
 
-    pub fn update(&mut self, arm_e: Arm, arm_r:Arm) -> std::io::Result<()>{
+    pub fn update(&self, arm_e: Arm, arm_r:Arm) -> std::io::Result<()>{
         let bytes_positions_e = arm_e.position().to_bytes();
         let bytes_positions_r = arm_r.position().to_bytes();
 
-        &(self.driver_rs232).write_i2c(&bytes_positions_e[0],I2cAddr::AddrXE)?;
-        &(self.driver_rs232).write_i2c(&bytes_positions_e[1],I2cAddr::AddrYE)?;
-        &(self.driver_rs232).write_i2c(&bytes_positions_e[2],I2cAddr::AddrZE)?;
-        &(self.driver_rs232).write_i2c(&bytes_positions_e[3],I2cAddr::AddrTE)?;
-        &(self.driver_rs232).write_i2c(&bytes_positions_r[0],I2cAddr::AddrXR)?;
-        &(self.driver_rs232).write_i2c(&bytes_positions_r[1],I2cAddr::AddrYR)?;
-        &(self.driver_rs232).write_i2c(&bytes_positions_r[2],I2cAddr::AddrZR)?;
-        &(self.driver_rs232).write_i2c(&bytes_positions_r[3],I2cAddr::AddrTR)?;
+        self.driver_rs232.write_i2c(&bytes_positions_e[0],I2cAddr::AddrXE)?;
+        self.driver_rs232.write_i2c(&bytes_positions_e[1],I2cAddr::AddrYE)?;
+        self.driver_rs232.write_i2c(&bytes_positions_e[2],I2cAddr::AddrZE)?;
+        self.driver_rs232.write_i2c(&bytes_positions_e[3],I2cAddr::AddrTE)?;
+        self.driver_rs232.write_i2c(&bytes_positions_r[0],I2cAddr::AddrXR)?;
+        self.driver_rs232.write_i2c(&bytes_positions_r[1],I2cAddr::AddrYR)?;
+        self.driver_rs232.write_i2c(&bytes_positions_r[2],I2cAddr::AddrZR)?;
+        self.driver_rs232.write_i2c(&bytes_positions_r[3],I2cAddr::AddrTR)?;
 
         self.go().expect("On arrive pas a changer l'un des pin Go");
 
         Ok(())
     }
 
-    pub fn go(&mut self) -> sysfs_gpio::Result<()>{
+    pub fn go(&self) -> sysfs_gpio::Result<()>{
         // A changer pour plus de synchro
         self.driver_x_emetteur.go()?;
         self.driver_y_emetteur.go()?;
@@ -73,7 +73,7 @@ impl ArmsBackend{
         Ok(())
     }
 
-    pub fn reset(&mut self) ->  sysfs_gpio::Result<()>{
+    pub fn reset(&self) ->  sysfs_gpio::Result<()>{
         // a changer comme le go
         self.driver_x_emetteur.reset().expect("Le moteur X emetteur est encore actif");
         self.driver_y_emetteur.reset().expect("Le moteur Y emetteur est encore actif");
@@ -87,7 +87,7 @@ impl ArmsBackend{
         Ok(())
     }
 
-    pub fn zero(&mut self) -> sysfs_gpio::Result<()>{
+    pub fn zero(&self) -> sysfs_gpio::Result<()>{
         // a changer comme le go
         self.driver_x_emetteur.zero().expect("Le moteur X emetteur est encore actif");
         self.driver_y_emetteur.zero().expect("Le moteur Y emetteur est encore actif");
@@ -99,9 +99,5 @@ impl ArmsBackend{
         self.driver_z_recepteur.zero().expect("Le moteur Z recepteur est encore actif");
         self.driver_t_recepteur.zero().expect("Le moteur Théta recepteur est encore actif");
         Ok(())
-    }
-
-    fn get_driver_rs232(self) -> DriversCnRs232{
-        self.driver_rs232
     }
 }

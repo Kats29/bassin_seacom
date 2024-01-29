@@ -15,7 +15,7 @@ fn handle_client(mut stream: Client<TcpStream>, drivers: &mut ArmsBackend) {
             match serde_json::from_str(msg.as_str()) {
                 Ok(json) => {
                     (left, right) = json;
-                    drivers.update(left, right);
+                    drivers.update(left, right).expect("Couldn't update");
                     println!("Data received : \n{:?}\n{:?}", left, right);
                     true
                 },
