@@ -254,7 +254,7 @@ impl TemplateApp {
                                 ui.set_height(height);
                                 // Current position
                                 let pos = ui.min_rect().min + egui::vec2(
-                                    self.right.position().x() * ui.min_rect().width() / 1347.0,
+                                    (self.right.position().x() - 70.0) * ui.min_rect().width() / 1347.0,
                                     -(self.right.position().y() - 495.0) * ui.min_rect().height() / 990.0,
                                 ) - egui::vec2(15.0, 15.0);
 
@@ -268,7 +268,7 @@ impl TemplateApp {
                                                 )
                                                 .max_size(egui::vec2(30.0, 30.0))
                                                 .rotate(
-                                                    self.right.position().theta() * PI / 180.0 + PI / 2.0,
+                                                    self.right.position().theta() * PI / 180.0 - PI / 2.0,
                                                     egui::vec2(0.5, 0.8)
                                                 )
                                         );
@@ -276,7 +276,7 @@ impl TemplateApp {
 
                                 // Next position
                                 let next_pos = ui.min_rect().min + egui::vec2(
-                                    self.right.next().x() * ui.min_rect().width() / 1347.0,
+                                    (self.right.next().x() - 70.0) * ui.min_rect().width() / 1347.0,
                                     -(self.right.next().y() - 495.0) * ui.min_rect().height() / 990.0,
                                 ) - egui::vec2(15.0, 15.0);
 
@@ -297,7 +297,7 @@ impl TemplateApp {
                                                         100
                                                     ))
                                                 .rotate(
-                                                    self.right.next().theta() * PI / 180.0 + PI / 2.0,
+                                                    self.right.next().theta() * PI / 180.0 - PI / 2.0,
                                                     egui::vec2(0.5, 0.8)
                                                 )
                                         );
@@ -306,7 +306,7 @@ impl TemplateApp {
                                 if area.dragged() {
                                     let pix_pos = area.rect.center() - ui.min_rect().min;
                                     self.right.set_next(definitions::Position::new(
-                                        pix_pos.x * 1347.0 / ui.min_rect().width(),
+                                        pix_pos.x * 1347.0 / ui.min_rect().width() + 70.0,
                                         -pix_pos.y * 990.0 / ui.min_rect().height() + 495.0,
                                         self.right.next().z(),
                                         self.right.next().theta()
@@ -355,7 +355,6 @@ impl TemplateApp {
 
                                 egui::Area::new("current_left_emitter_depth")
                                     .fixed_pos(pos)
-                                    .movable(true)
                                     .constrain_to(ui.min_rect())
                                     .show(ui.ctx(), |ui| {
                                         ui.add(
@@ -401,7 +400,7 @@ impl TemplateApp {
                                     self.left.set_next(definitions::Position::new(
                                         pix_pos.x * 1347.0 / ui.min_rect().width() - 1417.0,
                                         self.left.next().y(),
-                                        - pix_pos.y * 680.0 / ui.min_rect().height(),
+                                        pix_pos.y * 680.0 / ui.min_rect().height(),
                                         self.left.next().theta()
                                     ));
                                 }
@@ -419,7 +418,7 @@ impl TemplateApp {
 
                                 // Current position
                                 let pos = ui.min_rect().min + egui::vec2(
-                                    (self.right.position().x() + 1417.0) * ui.min_rect().width() / 1347.0,
+                                    (self.right.position().x() - 70.0) * ui.min_rect().width() / 1347.0,
                                     self.right.position().z() * ui.min_rect().height() / 680.0
                                 );
 
@@ -434,7 +433,7 @@ impl TemplateApp {
                                                 .max_size(egui::vec2(30.0, 30.0))
                                                 .rotate(
                                                     if self.right.position().theta().abs() < 90.0
-                                                        { PI/2.0 } else { -PI/2.0 },
+                                                        { -PI/2.0 } else { PI/2.0 },
                                                     egui::vec2(0.5, 0.8)
                                                 )
                                         );
@@ -442,12 +441,13 @@ impl TemplateApp {
 
                                 // Next position
                                 let next_pos = ui.min_rect().min + egui::vec2(
-                                    (self.right.next().x() + 1417.0) * ui.min_rect().width() / 1347.0,
+                                    (self.right.next().x() - 70.0) * ui.min_rect().width() / 1347.0,
                                     self.right.next().z() * ui.min_rect().height() / 680.0
                                 );
 
                                 let area = egui::Area::new("next_right_emitter_depth")
                                     .fixed_pos(next_pos)
+                                    .movable(true)
                                     .constrain_to(ui.min_rect())
                                     .show(ui.ctx(), |ui| {
                                         ui.add(
@@ -458,7 +458,7 @@ impl TemplateApp {
                                                 .tint(egui::Color32::from_rgba_premultiplied(0,0,0,100))
                                                 .rotate(
                                                     if self.right.next().theta().abs() < 90.0
-                                                        { PI/2.0 } else { -PI/2.0 },
+                                                        { -PI/2.0 } else { PI/2.0 },
                                                     egui::vec2(0.5, 0.8)
                                                 )
                                         );
@@ -467,9 +467,9 @@ impl TemplateApp {
                                 if area.dragged() {
                                     let pix_pos = area.rect.center() - ui.min_rect().min;
                                     self.right.set_next(definitions::Position::new(
-                                        pix_pos.x * 1347.0 / ui.min_rect().width() - 1417.0,
+                                        self.right.next().x(),//pix_pos.x * 1347.0 / ui.min_rect().width() + 70.0,
                                         self.right.next().y(),
-                                        - pix_pos.y * 680.0 / ui.min_rect().height(),
+                                        pix_pos.y * 680.0 / ui.min_rect().height(),
                                         self.right.next().theta()
                                     ));
                                 }
