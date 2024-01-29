@@ -186,7 +186,7 @@ impl TemplateApp {
                                     -(self.left.position().y() - 495.0) * ui.min_rect().height() / 990.0,
                                 ) - egui::vec2(15.0, 15.0);
 
-                                egui::Area::new("current_emitter")
+                                egui::Area::new("current_left_emitter")
                                     .fixed_pos(pos)
                                     .constrain_to(ui.min_rect())
                                     .show(ui.ctx(), |ui| {
@@ -208,7 +208,7 @@ impl TemplateApp {
                                     -(self.left.next().y() - 495.0) * ui.min_rect().height() / 990.0,
                                 ) - egui::vec2(15.0, 15.0);
 
-                                let area = egui::Area::new("next_emitter")
+                                let area = egui::Area::new("next_left_emitter")
                                     .fixed_pos(next_pos)
                                     .movable(true)
                                     .constrain_to(ui.min_rect())
@@ -252,6 +252,67 @@ impl TemplateApp {
                             .show(ui, |ui| {
                                 ui.set_width(width * (1.0 - 70.0 / 1417.0));
                                 ui.set_height(height);
+                                // Current position
+                                let pos = ui.min_rect().min + egui::vec2(
+                                    self.right.position().x() * ui.min_rect().width() / 1347.0,
+                                    -(self.right.position().y() - 495.0) * ui.min_rect().height() / 990.0,
+                                ) - egui::vec2(15.0, 15.0);
+
+                                egui::Area::new("current_right_emitter")
+                                    .fixed_pos(pos)
+                                    .constrain_to(ui.min_rect())
+                                    .show(ui.ctx(), |ui| {
+                                        ui.add(
+                                                egui::Image::new(
+                                                    egui::include_image!("../assets/emitter.png")
+                                                )
+                                                .max_size(egui::vec2(30.0, 30.0))
+                                                .rotate(
+                                                    self.right.position().theta() * PI / 180.0 + PI / 2.0,
+                                                    egui::vec2(0.5, 0.8)
+                                                )
+                                        );
+                                    });
+
+                                // Next position
+                                let next_pos = ui.min_rect().min + egui::vec2(
+                                    self.right.next().x() * ui.min_rect().width() / 1347.0,
+                                    -(self.right.next().y() - 495.0) * ui.min_rect().height() / 990.0,
+                                ) - egui::vec2(15.0, 15.0);
+
+                                let area = egui::Area::new("next_right_emitter")
+                                    .fixed_pos(next_pos)
+                                    .movable(true)
+                                    .constrain_to(ui.min_rect())
+                                    .show(ui.ctx(), |ui| {
+                                        ui.add(
+                                                egui::Image::new(
+                                                    egui::include_image!("../assets/emitter.png")
+                                                )
+                                                .max_size(egui::vec2(30.0, 30.0))
+                                                .tint(egui::Color32::from_rgba_premultiplied(
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        100
+                                                    ))
+                                                .rotate(
+                                                    self.right.next().theta() * PI / 180.0 + PI / 2.0,
+                                                    egui::vec2(0.5, 0.8)
+                                                )
+                                        );
+                                    }).response;
+
+                                if area.dragged() {
+                                    let pix_pos = area.rect.center() - ui.min_rect().min;
+                                    self.right.set_next(definitions::Position::new(
+                                        pix_pos.x * 1347.0 / ui.min_rect().width(),
+                                        -pix_pos.y * 990.0 / ui.min_rect().height() + 495.0,
+                                        self.right.next().z(),
+                                        self.right.next().theta()
+                                    ));
+                                }
+
                             });
 
                         ui.add_space(10.0);
@@ -292,8 +353,9 @@ impl TemplateApp {
                                     self.left.position().z() * ui.min_rect().height() / 680.0
                                 );
 
-                                egui::Area::new("current_emitter_depth")
+                                egui::Area::new("current_left_emitter_depth")
                                     .fixed_pos(pos)
+                                    .movable(true)
                                     .constrain_to(ui.min_rect())
                                     .show(ui.ctx(), |ui| {
                                         ui.add(
@@ -315,8 +377,9 @@ impl TemplateApp {
                                     self.left.next().z() * ui.min_rect().height() / 680.0
                                 );
 
-                                egui::Area::new("next_emitter_depth")
+                                let area = egui::Area::new("next_left_emitter_depth")
                                     .fixed_pos(next_pos)
+                                    .movable(true)
                                     .constrain_to(ui.min_rect())
                                     .show(ui.ctx(), |ui| {
                                         ui.add(
@@ -331,7 +394,17 @@ impl TemplateApp {
                                                     egui::vec2(0.5, 0.8)
                                                 )
                                         );
-                                    });
+                                    }).response;
+
+                                if area.dragged() {
+                                    let pix_pos = area.rect.center() - ui.min_rect().min;
+                                    self.left.set_next(definitions::Position::new(
+                                        pix_pos.x * 1347.0 / ui.min_rect().width() - 1417.0,
+                                        self.left.next().y(),
+                                        - pix_pos.y * 680.0 / ui.min_rect().height(),
+                                        self.left.next().theta()
+                                    ));
+                                }
                             });
 
                         ui.add_space(width * 140.0 / 1417.0);
@@ -343,6 +416,64 @@ impl TemplateApp {
                             .show(ui, |ui| {
                                 ui.set_width(width * (1.0 - 70.0 / 1417.0));
                                 ui.set_height(depth);
+
+                                // Current position
+                                let pos = ui.min_rect().min + egui::vec2(
+                                    (self.right.position().x() + 1417.0) * ui.min_rect().width() / 1347.0,
+                                    self.right.position().z() * ui.min_rect().height() / 680.0
+                                );
+
+                                egui::Area::new("current_right_emitter_depth")
+                                    .fixed_pos(pos)
+                                    .constrain_to(ui.min_rect())
+                                    .show(ui.ctx(), |ui| {
+                                        ui.add(
+                                                egui::Image::new(
+                                                    egui::include_image!("../assets/emitter.png")
+                                                )
+                                                .max_size(egui::vec2(30.0, 30.0))
+                                                .rotate(
+                                                    if self.right.position().theta().abs() < 90.0
+                                                        { PI/2.0 } else { -PI/2.0 },
+                                                    egui::vec2(0.5, 0.8)
+                                                )
+                                        );
+                                    });
+
+                                // Next position
+                                let next_pos = ui.min_rect().min + egui::vec2(
+                                    (self.right.next().x() + 1417.0) * ui.min_rect().width() / 1347.0,
+                                    self.right.next().z() * ui.min_rect().height() / 680.0
+                                );
+
+                                let area = egui::Area::new("next_right_emitter_depth")
+                                    .fixed_pos(next_pos)
+                                    .constrain_to(ui.min_rect())
+                                    .show(ui.ctx(), |ui| {
+                                        ui.add(
+                                                egui::Image::new(
+                                                    egui::include_image!("../assets/emitter.png")
+                                                )
+                                                .max_size(egui::vec2(30.0, 30.0))
+                                                .tint(egui::Color32::from_rgba_premultiplied(0,0,0,100))
+                                                .rotate(
+                                                    if self.right.next().theta().abs() < 90.0
+                                                        { PI/2.0 } else { -PI/2.0 },
+                                                    egui::vec2(0.5, 0.8)
+                                                )
+                                        );
+                                    }).response;
+
+                                if area.dragged() {
+                                    let pix_pos = area.rect.center() - ui.min_rect().min;
+                                    self.right.set_next(definitions::Position::new(
+                                        pix_pos.x * 1347.0 / ui.min_rect().width() - 1417.0,
+                                        self.right.next().y(),
+                                        - pix_pos.y * 680.0 / ui.min_rect().height(),
+                                        self.right.next().theta()
+                                    ));
+                                }
+
                             });
 
                         ui.add_space(10.0);
