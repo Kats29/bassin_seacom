@@ -36,7 +36,7 @@ const ADDR_Y_R: u8= 0x39;
 const ADDR_Z_R: u8 = 0x39;
 const ADDR_T_R: u8 = 0x39;
 
-#[derive(Clone,Copy)]
+#[derive(Clone)]
 pub struct DriversCnRs232{
     i2c_handler: Option<I2c<File>>
 }

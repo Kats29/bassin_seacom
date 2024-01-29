@@ -44,14 +44,14 @@ impl ArmsBackend{
         let bytes_positions_e = arm_e.position().to_bytes();
         let bytes_positions_r = arm_r.position().to_bytes();
 
-        self.driver_rs232.write_i2c(&bytes_positions_e[0],I2cAddr::AddrXE)?;
-        self.driver_rs232.write_i2c(&bytes_positions_e[1],I2cAddr::AddrYE)?;
-        self.driver_rs232.write_i2c(&bytes_positions_e[2],I2cAddr::AddrZE)?;
-        self.driver_rs232.write_i2c(&bytes_positions_e[3],I2cAddr::AddrTE)?;
-        self.driver_rs232.write_i2c(&bytes_positions_r[0],I2cAddr::AddrXR)?;
-        self.driver_rs232.write_i2c(&bytes_positions_r[1],I2cAddr::AddrYR)?;
-        self.driver_rs232.write_i2c(&bytes_positions_r[2],I2cAddr::AddrZR)?;
-        self.driver_rs232.write_i2c(&bytes_positions_r[3],I2cAddr::AddrTR)?;
+        &(self.driver_rs232).write_i2c(&bytes_positions_e[0],I2cAddr::AddrXE)?;
+        &(self.driver_rs232).write_i2c(&bytes_positions_e[1],I2cAddr::AddrYE)?;
+        &(self.driver_rs232).write_i2c(&bytes_positions_e[2],I2cAddr::AddrZE)?;
+        &(self.driver_rs232).write_i2c(&bytes_positions_e[3],I2cAddr::AddrTE)?;
+        &(self.driver_rs232).write_i2c(&bytes_positions_r[0],I2cAddr::AddrXR)?;
+        &(self.driver_rs232).write_i2c(&bytes_positions_r[1],I2cAddr::AddrYR)?;
+        &(self.driver_rs232).write_i2c(&bytes_positions_r[2],I2cAddr::AddrZR)?;
+        &(self.driver_rs232).write_i2c(&bytes_positions_r[3],I2cAddr::AddrTR)?;
 
         self.go().expect("On arrive pas a changer l'un des pin Go");
 
