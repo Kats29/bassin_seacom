@@ -1,15 +1,12 @@
 use common::definitions::{Arm, Position};
 use crate::driver_cn_pin::{DriverCnPin, DriverType};
-use  crate::drivers_cn_rs232::DriversCnRs232;
+use crate::drivers_cn_rs232::{DriversCnRs232, I2cAddr};
 
 pub struct ArmsBackend{
-    bras_emetteur: Arm,
-    bras_recepteur: Arm,
     driver_x_emetteur: DriverCnPin,
     driver_y_emetteur: DriverCnPin,
     driver_z_emetteur: DriverCnPin,
     driver_t_emetteur: DriverCnPin,
-
 
     driver_x_recepteur: DriverCnPin,
     driver_y_recepteur: DriverCnPin,
@@ -22,19 +19,17 @@ pub struct ArmsBackend{
 impl Default for ArmsBackend {
     fn default() -> Self {
         Self {
-            bras_emetteur: Arm::new(true),
-            bras_recepteur: Arm::new(false),
-
             driver_x_emetteur: DriverCnPin::new(true,DriverType::X).expect("Erreur lors de la création de l'interface pour la CN X émettrice"),
             driver_y_emetteur: DriverCnPin::new(true,DriverType::Y).expect("Erreur lors de la création de l'interface pour la CN Y émettrice"),
             driver_z_emetteur: DriverCnPin::new(true,DriverType::Z).expect("Erreur lors de la création de l'interface pour la CN Z émettrice"),
             driver_t_emetteur: DriverCnPin::new(true,DriverType::THETA).expect("Erreur lors de la création de l'interface pour la CN Théta émettrice"),
+
             driver_x_recepteur: DriverCnPin::new(false,DriverType::X).expect("Erreur lors de la création de l'interface pour la CN X réceptrice"),
             driver_y_recepteur: DriverCnPin::new(false,DriverType::Y).expect("Erreur lors de la création de l'interface pour la CN Y réceptrice"),
             driver_z_recepteur: DriverCnPin::new(false,DriverType::Z).expect("Erreur lors de la création de l'interface pour la CN Z réceptrice"),
             driver_t_recepteur: DriverCnPin::new(false,DriverType::THETA).expect("Erreur lors de la création de l'interface pour la CN Théta réceptrice"),
 
-            driver_rs232: DriversCnRs232::new(),
+            driver_rs232: DriversCnRs232::new()?,
 
         }
     }
@@ -48,18 +43,24 @@ impl ArmsBackend{
         return bras;
 
     }
-    fn set_pos_e(&mut self,pos_e: Position){
-        self.bras_emetteur.set_position(pos_e);
-    }
-    fn set_pos_r(&mut self,pos_r: Position){
-        self.bras_recepteur.set_position(pos_r);
-    }
 
-    pub fn update(&mut self, arm_e: Arm, arm_r:Arm){
-        self.set_pos_e(arm_e.position());
-        self.set_pos_r(arm_r.position())
-    }
+    pub fn update(&mut self, arm_e: Arm, arm_r:Arm) -> std::io::Result<()>{
+        let bytes_positions_e = arm_e.position().to_bytes();
+        let bytes_positions_r = arm_r.position().to_bytes();
 
+        self.driver_rs232.write_i2c(&*bytes_positions_e[0],I2cAddr::AddrXE)?;
+        self.driver_rs232.write_i2c(&*bytes_positions_e[1],I2cAddr::AddrYE)?;
+        self.driver_rs232.write_i2c(&*bytes_positions_e[2],I2cAddr::AddrZE)?;
+        self.driver_rs232.write_i2c(&*bytes_positions_e[3],I2cAddr::AddrTE)?;
+        self.driver_rs232.write_i2c(&*bytes_positions_r[0],I2cAddr::AddrXR)?;
+        self.driver_rs232.write_i2c(&*bytes_positions_r[1],I2cAddr::AddrYR)?;
+        self.driver_rs232.write_i2c(&*bytes_positions_r[2],I2cAddr::AddrZR)?;
+        self.driver_rs232.write_i2c(&*bytes_positions_r[3],I2cAddr::AddrTR)?;
+
+        self.go()?;
+
+        Ok(())
+    }
 
     pub fn go(&mut self) -> sysfs_gpio::Result<()>{
         // A changer pour plus de synchro
