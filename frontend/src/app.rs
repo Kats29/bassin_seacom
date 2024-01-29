@@ -1,12 +1,15 @@
+use console_error_panic_hook;
+use console_log;
+use log::{error, info, Level};
 use eframe::egui;
 use egui_extras::install_image_loaders;
 use serde::{Serialize, Deserialize};
 use serde_json;
+use wasm_sockets::{self, WebSocketError};
 use std::{
+    panic,
     f32::consts::PI,
-    net::TcpStream,
     io::{Read, Write},
-    str::from_utf8,
 };
 
 use common::definitions;
@@ -19,7 +22,7 @@ pub struct TemplateApp {
     right: definitions::Arm,
 
     #[serde(skip)]
-    stream: Option<TcpStream>
+    stream: wasm_sockets::EventClient
 }
 
 impl Default for TemplateApp {
@@ -32,7 +35,7 @@ impl Default for TemplateApp {
         Self {
             left: left_arm,
             right: right_arm,
-            stream: None
+            stream: Self::connect("ws://beaglebone.local:3333")
         }
     }
 }
@@ -49,16 +52,35 @@ impl TemplateApp {
             return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
         }
 
-        let mut default: TemplateApp = Default::default();
+        panic::set_hook(Box::new(console_error_panic_hook::hook));
+        // console_log and log macros are used instead of println!
+        // so that messages can be seen in the browser console
+        console_log::init_with_level(Level::Trace).expect("Failed to enable logging");
+        info!("Creating connection");
 
-        default.connect("beaglebone.local:3333");
-
-        return default;
+        Default::default()
     }
 
-    pub fn connect(&mut self, url: &str) {
-        self.stream = TcpStream::connect(url).ok();
-        println!("Successfully connected to {}", url);
+    pub fn connect(url: &str) -> wasm_sockets::EventClient {
+        let mut client = wasm_sockets::EventClient::new(url).unwrap();
+
+        client.set_on_error(Some(Box::new(|error| {
+            error!("{:#?}", error);
+        })));
+        client.set_on_connection(Some(Box::new(|client: &wasm_sockets::EventClient| {
+            info!("{:#?}", client.status);
+            info!("Connection successfully created");
+        })));
+        client.set_on_close(Some(Box::new(|_evt| {
+            info!("Connection closed");
+        })));
+        client.set_on_message(Some(Box::new(
+            |client: &wasm_sockets::EventClient, message: wasm_sockets::Message| {
+                info!("New Message: {:#?}", message);
+            },
+        )));
+
+        return client;
     }
 
     /// Defines the look of the left and right side panels
@@ -333,16 +355,10 @@ impl TemplateApp {
     pub fn send(&mut self) {
         let data = (self.left, self.right);
 
-        let msg = &serde_json::to_string(&data)
-            .expect("JSON conversion error")
-            .into_bytes();
-        match &mut self.stream {
-            Some(stream) => stream.write(msg).unwrap(),
-            None => {
-                println!("TCP stream not found");
-                0
-            }
-        };
+        let msg = serde_json::to_string(&data)
+            .expect("JSON conversion error");
+
+        self.stream.send_string(msg.as_str()).unwrap();
     }
 
     pub fn origin(&mut self) {
