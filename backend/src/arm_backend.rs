@@ -1,4 +1,4 @@
-use common::definitions::{Arm, Position};
+use common::definitions::Arm;
 use crate::driver_cn_pin::{DriverCnPin, DriverType};
 use crate::drivers_cn_rs232::{DriversCnRs232, I2cAddr};
 
@@ -36,10 +36,8 @@ impl Default for ArmsBackend {
 }
 
 impl ArmsBackend{
-    pub fn new(pos_e: Position, pos_r: Position) -> Self{
-        let mut bras = Self::default();
-        return bras;
-
+    pub fn new() -> Self{
+        return Self::default();
     }
 
     pub fn update(&mut self, arm_e: Arm, arm_r:Arm) -> std::io::Result<()>{
