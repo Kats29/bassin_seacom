@@ -114,7 +114,7 @@ impl DriverCnPin {
         return Ok(driver);
     }
 
-    fn set_direction(&self) -> gpio::Result<()> {
+    fn set_direction(&mut self) -> gpio::Result<()> {
         self.pin_go.set_direction(Direction::Out)?;
         self.pin_reset.set_direction(Direction::Out)?;
         self.pin_zero.set_direction(Direction::Out)?;
@@ -124,21 +124,10 @@ impl DriverCnPin {
     }
 
     fn set_export(&self) -> gpio::Result<()> {
-        if !(self.pin_go.is_exported()) {
-            self.pin_go.export()?;
-        }
-
-        if !(self.pin_reset.is_exported()) {
-            self.pin_reset.export()?;
-        }
-
-        if !(self.pin_zero.is_exported()) {
-            self.pin_zero.export()?;
-        }
-
-        if !(self.pin_fin_mvt.is_exported()) {
-            self.pin_fin_mvt.export()?;
-        }
+        self.pin_go.export()?;
+        self.pin_reset.export()?;
+        self.pin_zero.export()?;
+        self.pin_fin_mvt.export()?;
 
         return Ok(());
     }
