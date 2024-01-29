@@ -53,22 +53,22 @@ impl ArmsBackend{
         self.driver_rs232.write_i2c(&bytes_positions_r[2],I2cAddr::AddrZR)?;
         self.driver_rs232.write_i2c(&bytes_positions_r[3],I2cAddr::AddrTR)?;
 
-        self.go()?;
+        self.go().expect("On arrive pas a changer l'un des pin Go");
 
         Ok(())
     }
 
     pub fn go(&mut self) -> sysfs_gpio::Result<()>{
         // A changer pour plus de synchro
-        self.driver_x_emetteur.go().expect("Le moteur X emetteur est encore actif");
-        self.driver_y_emetteur.go().expect("Le moteur Y emetteur est encore actif");
-        self.driver_z_emetteur.go().expect("Le moteur Z emetteur est encore actif");
-        self.driver_t_emetteur.go().expect("Le moteur Théta emetteur est encore actif");
+        self.driver_x_emetteur.go()?;
+        self.driver_y_emetteur.go()?;
+        self.driver_z_emetteur.go()?;
+        self.driver_t_emetteur.go()?;
 
-        self.driver_x_recepteur.go().expect("Le moteur X recepteur est encore actif");
-        self.driver_y_recepteur.go().expect("Le moteur Y recepteur est encore actif");
-        self.driver_z_recepteur.go().expect("Le moteur Z recepteur est encore actif");
-        self.driver_t_recepteur.go().expect("Le moteur Théta recepteur est encore actif");
+        self.driver_x_recepteur.go()?;
+        self.driver_y_recepteur.go()?;
+        self.driver_z_recepteur.go()?;
+        self.driver_t_recepteur.go()?;
 
         Ok(())
     }
