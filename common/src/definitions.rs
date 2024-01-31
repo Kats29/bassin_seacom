@@ -1,3 +1,14 @@
+pub enum Command{
+    Go,
+    Reset,
+    Zero,
+    ArrUrg,
+    ArrMom,
+    Start,
+    Stop
+}
+
+
 #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
 #[serde(default)]
 pub struct Position {

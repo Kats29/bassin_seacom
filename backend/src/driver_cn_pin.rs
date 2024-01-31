@@ -2,19 +2,13 @@ use std::{
     thread::sleep,
     time::Duration
 };
-
 use sysfs_gpio as gpio;
 use gpio::{
     Direction, Pin,
 };
+use common::error::{HardwareError,DriverType};
 
-
-pub enum DriverType {
-    X,
-    Y,
-    Z,
-    THETA,
-}
+use crate::error_handler;
 
 pub struct DriverCnPin {
     pin_go: Pin,
@@ -31,13 +25,13 @@ impl Default for DriverCnPin {
             pin_reset: Pin::new(0),
             pin_zero: Pin::new(0),
             pin_fin_mvt: Pin::new(0),
-            driver_type: DriverType::X,
+            driver_type: DriverType::EX,
         }
     }
 }
 
 impl DriverCnPin {
-    pub fn new(is_emitter: bool, driver_type: DriverType) -> gpio::Result<Self> {
+    pub fn new(driver_type: DriverType) -> Result<Self,HardwareError> {
         let mut driver = Self::default();
         driver.driver_type = driver_type;
         let pin_go: u8;
@@ -45,60 +39,54 @@ impl DriverCnPin {
         let pin_zero: u8;
         let pin_fin_mvt: u8;
 
-
-        if is_emitter {
-            match driver.driver_type {
-                DriverType::X => {
-                    pin_go = 1;
-                    pin_reset = 0;
-                    pin_zero = 0;
-                    pin_fin_mvt = 0;
-                }
-                DriverType::Y => {
-                    pin_go = 0;
-                    pin_reset = 0;
-                    pin_zero = 0;
-                    pin_fin_mvt = 0;
-                }
-                DriverType::Z => {
-                    pin_go = 0;
-                    pin_reset = 0;
-                    pin_zero = 0;
-                    pin_fin_mvt = 0;
-                }
-                DriverType::THETA => {
-                    pin_go = 0;
-                    pin_reset = 0;
-                    pin_zero = 0;
-                    pin_fin_mvt = 0;
-                }
+        match driver.driver_type {
+            DriverType::EX => {
+                pin_go = 1;
+                pin_reset = 0;
+                pin_zero = 0;
+                pin_fin_mvt = 0;
             }
-        } else {
-            match driver.driver_type {
-                DriverType::X => {
-                    pin_go = 0;
-                    pin_reset = 0;
-                    pin_zero = 0;
-                    pin_fin_mvt = 0;
-                }
-                DriverType::Y => {
-                    pin_go = 0;
-                    pin_reset = 0;
-                    pin_zero = 0;
-                    pin_fin_mvt = 0;
-                }
-                DriverType::Z => {
-                    pin_go = 0;
-                    pin_reset = 0;
-                    pin_zero = 0;
-                    pin_fin_mvt = 0;
-                }
-                DriverType::THETA => {
-                    pin_go = 0;
-                    pin_reset = 0;
-                    pin_zero = 0;
-                    pin_fin_mvt = 0;
-                }
+            DriverType::EY => {
+                pin_go = 0;
+                pin_reset = 0;
+                pin_zero = 0;
+                pin_fin_mvt = 0;
+            }
+            DriverType::EZ => {
+                pin_go = 0;
+                pin_reset = 0;
+                pin_zero = 0;
+                pin_fin_mvt = 0;
+            }
+            DriverType::ETHETA => {
+                pin_go = 0;
+                pin_reset = 0;
+                pin_zero = 0;
+                pin_fin_mvt = 0;
+            }
+            DriverType::RX => {
+                pin_go = 0;
+                pin_reset = 0;
+                pin_zero = 0;
+                pin_fin_mvt = 0;
+            }
+            DriverType::RY => {
+                pin_go = 0;
+                pin_reset = 0;
+                pin_zero = 0;
+                pin_fin_mvt = 0;
+            }
+            DriverType::RZ => {
+                pin_go = 0;
+                pin_reset = 0;
+                pin_zero = 0;
+                pin_fin_mvt = 0;
+            }
+            DriverType::RTHETA => {
+                pin_go = 0;
+                pin_reset = 0;
+                pin_zero = 0;
+                pin_fin_mvt = 0;
             }
         }
 
@@ -114,47 +102,86 @@ impl DriverCnPin {
         return Ok(driver);
     }
 
-    fn set_direction(&mut self) -> gpio::Result<()> {
-        self.pin_go.set_direction(Direction::Out)?;
-        self.pin_reset.set_direction(Direction::Out)?;
-        self.pin_zero.set_direction(Direction::Out)?;
-        self.pin_fin_mvt.set_direction(Direction::In)?;
+    fn set_direction(&mut self) -> Result<(),HardwareError> {
+        error_handler::handle_pin_direction_error(self.pin_go,Direction::Out)?;
+        error_handler::handle_pin_direction_error(self.pin_reset,Direction::Out)?;
+        error_handler::handle_pin_direction_error(self.pin_zero,Direction::Out)?;
+        error_handler::handle_pin_direction_error(self.pin_fin_mvt,Direction::In)?;
 
         return Ok(());
     }
 
-    fn set_export(&self) -> gpio::Result<()> {
-        self.pin_go.export()?;
-        self.pin_reset.export()?;
-        self.pin_zero.export()?;
-        self.pin_fin_mvt.export()?;
+    fn set_export(&self) -> Result<(),HardwareError> {
+        error_handler::handle_pin_export_error(self.pin_go)?;
+        error_handler::handle_pin_export_error(self.pin_reset)?;
+        error_handler::handle_pin_export_error(self.pin_zero)?;
+        error_handler::handle_pin_export_error(self.pin_fin_mvt)?;
 
         return Ok(());
     }
 
-    pub fn go(&self) -> gpio::Result<()> {
-        let go = self.pin_go.get_value()?;
-        let fin_mvt = self.pin_fin_mvt.get_value()?;
+    fn get_driver_type(& self) -> DriverType {
+        return self.driver_type;
+    }
+
+    pub fn go(&self) -> Result<(),HardwareError> {
+        let go =
+            error_handler::handle_pin_read_error(self.pin_go)?;
+        match self.pin_go.get_value() {
+            Ok(a) => Ok(a),
+            Err(_) => Err(HardwareError::PinRead(self.pin_go.get_pin() as u8)),
+        }?;
+
+        let fin_mvt = match self.pin_fin_mvt.get_value() {
+            Ok(a) => Ok(a),
+            Err(_) => Err(HardwareError::PinRead(self.pin_fin_mvt.get_pin() as u8)),
+        }?;
+
         if go == 1 || fin_mvt == 0 {
-            return Err(gpio::Error::Unexpected("Mouvement non fini".to_string()));
+            return Err(HardwareError::MovmentNotFinished(self.get_driver_type()));
         }
-        self.pin_go.set_value(1)?;
-        while self.pin_fin_mvt.get_value().unwrap() == 1 {}
-        self.pin_go.set_value(0)?;
-        return Ok(());
-    }
 
-    pub fn reset(&self) -> gpio::Result<()>{
-        self.pin_reset.set_value(1)?;
-        sleep(Duration::from_millis(300));
-        self.pin_reset.set_value(0)?;
+
+        match self.pin_go.set_value(1) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(HardwareError::PinWrite(self.pin_go.get_pin() as u8)),
+        }?;
+
+
+        while match self.pin_fin_mvt.get_value() {
+            Ok(a) => Ok(a),
+            Err(_) => Err(HardwareError::PinRead(self.pin_go.get_pin() as u8)),
+        }? == 1 {}
+        match self.pin_go.set_value(0) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(HardwareError::PinWrite(self.pin_go.get_pin() as u8)),
+        }?;
         Ok(())
     }
 
-    pub fn zero(&self) -> gpio::Result<()>{
-        self.pin_zero.set_value(1)?;
+    pub fn reset(&self) -> Result<(),HardwareError>{
+        match self.pin_reset.set_value(1){
+            Ok(_) => Ok(()),
+            Err(_) => Err(HardwareError::PinWrite(self.pin_reset.get_pin() as u8)),
+        }?;
         sleep(Duration::from_millis(300));
-        self.pin_zero.set_value(0)?;
+        match self.pin_reset.set_value(0){
+            Ok(_) => Ok(()),
+            Err(_) => Err(HardwareError::PinWrite(self.pin_reset.get_pin() as u8)),
+        }?;
+        Ok(())
+    }
+
+    pub fn zero(&self) -> Result<(),HardwareError>{
+        match self.pin_zero.set_value(1){
+            Ok(_) => Ok(()),
+            Err(_) => Err(HardwareError::PinWrite(self.pin_zero.get_pin() as u8)),
+        }?;
+        sleep(Duration::from_millis(300));
+        match self.pin_zero.set_value(0){
+            Ok(_) => Ok(()),
+            Err(_) => Err(HardwareError::PinWrite(self.pin_zero.get_pin() as u8)),
+        }?;
         Ok(())
     }
 
