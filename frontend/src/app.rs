@@ -236,7 +236,8 @@ impl TemplateApp {
 
         let rounding = if is_up {
             egui::Rounding::same(5.0)
-        } else {
+        }
+        else {
             let mut i = egui::Rounding::ZERO;
             i.sw = 10.0;
             i.se = 10.0;
@@ -276,15 +277,15 @@ impl TemplateApp {
                                     } else {
                                         if is_left {
                                             if self.left.position().theta().abs() < 90.0 {
-                                                -PI / 2.0
-                                            } else {
                                                 PI / 2.0
+                                            } else {
+                                                -PI / 2.0
                                             }
                                         } else {
                                             if arm.position().theta().abs() < 90.0 {
-                                                PI / 2.0
-                                            } else {
                                                 -PI / 2.0
+                                            } else {
+                                                PI / 2.0
                                             }
                                         }
                                     },
@@ -318,22 +319,22 @@ impl TemplateApp {
                                 .rotate(
                                     if is_up {
                                         if is_left {
-                                            self.left.position().theta() * PI / 180.0 + PI / 2.0
+                                            self.left.next().theta() * PI / 180.0 + PI / 2.0
                                         } else {
-                                            self.right.position().theta() * PI / 180.0 - PI / 2.0
+                                            self.right.next().theta() * PI / 180.0 - PI / 2.0
                                         }
                                     } else {
                                         if is_left {
-                                            if self.left.position().theta().abs() < 90.0 {
-                                                -PI / 2.0
-                                            } else {
+                                            if self.left.next().theta().abs() < 90.0 {
                                                 PI / 2.0
+                                            } else {
+                                                -PI / 2.0
                                             }
                                         } else {
-                                            if arm.position().theta().abs() < 90.0 {
-                                                PI / 2.0
-                                            } else {
+                                            if self.right.next().theta().abs() < 90.0 {
                                                 -PI / 2.0
+                                            } else {
+                                                PI / 2.0
                                             }
                                         }
                                     },
