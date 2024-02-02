@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use crate::definitions::{DriverType,Doors};
 
-#[derive(Debug)]
+#[derive(serde::Deserialize, serde::Serialize,Copy, Clone,Debug)]
 pub enum HardwareError {
     NotPowered,
     NotStarted,

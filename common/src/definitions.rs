@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug)]
+#[derive(serde::Deserialize, serde::Serialize,Copy, Clone,Debug)]
 pub enum Doors{
     GaucheBas,
     GaucheHaut,

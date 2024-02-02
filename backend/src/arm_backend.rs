@@ -86,9 +86,9 @@ impl ArmsBackend {
 
         arms.global_pin_creation();
 
-        arms.clone().global_pin_export()?;
+        arms.global_pin_export()?;
 
-        arms.clone().global_pin_direction()?;
+        arms.global_pin_direction()?;
 
 
         //arms.pin_on.set_value(1).expect("Le drivers n'as pas pu être lancé");
@@ -121,7 +121,7 @@ impl ArmsBackend {
         handle_pin_export_error(self.pin_porte_droite_haut)
     }
 
-    fn global_pin_direction(self) -> Result<(),HardwareError>{
+    fn global_pin_direction(&self) -> Result<(),HardwareError>{
         handle_pin_direction_error(self.pin_on,Direction::Out)?;
         handle_pin_direction_error(self.pin_ordre_ar_urg,Direction::Out)?;
         handle_pin_direction_error(self.pin_ar_mom,Direction::Out)?;
@@ -134,10 +134,11 @@ impl ArmsBackend {
         handle_pin_direction_error(self.pin_porte_droite_bas,Direction::In)
     }
 
-    fn check_status(self) -> Result<(), HardwareError> {
+    fn check_status(&self) -> Result<(), HardwareError> {
         if handle_pin_read_error(self.pin_ar_mom)? != 0 {
             return Err(HardwareError::ArrMom);
         }
+
         if handle_pin_read_error(self.pin_info_etat)? != 1 {
             if handle_pin_read_error(self.pin_on)? != 1 {
                 return Err(HardwareError::NotStarted);
@@ -162,59 +163,51 @@ impl ArmsBackend {
         Ok(())
     }
 
-    pub fn update(self, command: Command) -> Result<(), HardwareError> {
-        self.clone().check_status()?;
+    pub fn update(&self, command: Command) -> Result<(), HardwareError> {
+        println!("nouvelle commande");
+        //self.check_status()?;
         match command {
             Command::Go(dt, arm_e, arm_r) => {
-                self.clone().write_go(dt, arm_e, arm_r)?;
-                self.clone().pin_go(dt)
+                println!("Go pour {}",dt);
+                self.write_go(dt, arm_e, arm_r)?;
+                self.pin_go(dt)
             }
-            Command::Reset(dt) => self.clone().reset(dt),
-            Command::Zero(dt) => self.clone().zero(dt),
-            Command::ArrUrg => self.clone().arr_urg(true),
-            Command::StopArrUrg => self.clone().arr_urg(false),
-            Command::ArrMom => self.clone().arr_mom(true),
-            Command::StopArrMom => self.clone().arr_mom(false),
-            Command::Start => self.clone().start_bassin(),
-            Command::Stop => self.clone().stop_bassin(),
+            Command::Reset(dt) => self.reset(dt),
+            Command::Zero(dt) => {
+                println!("Retour a l'origine");
+                self.zero(dt)
+            },
+            Command::ArrUrg => self.arr_urg(true),
+            Command::StopArrUrg => self.arr_urg(false),
+            Command::ArrMom => self.arr_mom(true),
+            Command::StopArrMom => self.arr_mom(false),
+            Command::Start => self.start_bassin(),
+            Command::Stop => self.stop_bassin(),
         }
-        // let bytes_positions_e = arm_e.position().to_bytes();
-        // let bytes_positions_r = arm_r.position().to_bytes();
-        // let driver  = DriversCnRs232::from(&self.driver_rs232);
-        // self.driver_rs232.clone().write_i2c(&bytes_positions_e[0], DriverType::EX)?;
-        // self.driver_rs232.clone().write_i2c(&bytes_positions_e[1], DriverType::EY)?;
-        // self.driver_rs232.clone().write_i2c(&bytes_positions_e[2], DriverType::EZ)?;
-        // self.driver_rs232.clone().write_i2c(&bytes_positions_e[3], DriverType::ETHETA)?;
-        // self.driver_rs232.clone().write_i2c(&bytes_positions_r[0], DriverType::RX)?;
-        // self.driver_rs232.clone().write_i2c(&bytes_positions_r[1], DriverType::RY)?;
-        // self.driver_rs232.clone().write_i2c(&bytes_positions_r[2], DriverType::RZ)?;
-        // self.driver_rs232.clone().write_i2c(&bytes_positions_r[3], DriverType::RTHETA)?;
-
-        //self.go()?;
     }
 
     pub fn write_go(&self, driver_type: DriverType, arm_e: Arm, arm_r: Arm) -> Result<(), HardwareError> {
         match driver_type {
-            DriverType::EX => self.driver_rs232.clone().write_i2c(arm_e.position().x_to_bytes(), driver_type),
-            DriverType::EY => self.driver_rs232.clone().write_i2c(arm_e.position().y_to_bytes(), driver_type),
-            DriverType::EZ => self.driver_rs232.clone().write_i2c(arm_e.position().z_to_bytes(), driver_type),
-            DriverType::ETHETA => self.driver_rs232.clone().write_i2c(arm_e.position().theta_to_bytes(), driver_type),
-            DriverType::RX => self.driver_rs232.clone().write_i2c(arm_r.position().x_to_bytes(), driver_type),
-            DriverType::RY => self.driver_rs232.clone().write_i2c(arm_r.position().y_to_bytes(), driver_type),
-            DriverType::RZ => self.driver_rs232.clone().write_i2c(arm_r.position().z_to_bytes(), driver_type),
-            DriverType::RTHETA => self.driver_rs232.clone().write_i2c(arm_r.position().theta_to_bytes(), driver_type),
+            DriverType::EX => self.driver_rs232.write_i2c(arm_e.position().x_to_bytes(), driver_type),
+            DriverType::EY => self.driver_rs232.write_i2c(arm_e.position().y_to_bytes(), driver_type),
+            DriverType::EZ => self.driver_rs232.write_i2c(arm_e.position().z_to_bytes(), driver_type),
+            DriverType::ETHETA => self.driver_rs232.write_i2c(arm_e.position().theta_to_bytes(), driver_type),
+            DriverType::RX => self.driver_rs232.write_i2c(arm_r.position().x_to_bytes(), driver_type),
+            DriverType::RY => self.driver_rs232.write_i2c(arm_r.position().y_to_bytes(), driver_type),
+            DriverType::RZ => self.driver_rs232.write_i2c(arm_r.position().z_to_bytes(), driver_type),
+            DriverType::RTHETA => self.driver_rs232.write_i2c(arm_r.position().theta_to_bytes(), driver_type),
             DriverType::R => {
-                self.clone().write_go(DriverType::RX, Arm::default(), arm_r)?;
-                self.clone().write_go(DriverType::RY, Arm::default(), arm_r)?;
-                self.clone().write_go(DriverType::RZ, Arm::default(), arm_r)?;
-                self.clone().write_go(DriverType::RTHETA, Arm::default(), arm_r)?;
+                self.write_go(DriverType::RX, Arm::default(), arm_r)?;
+                self.write_go(DriverType::RY, Arm::default(), arm_r)?;
+                self.write_go(DriverType::RZ, Arm::default(), arm_r)?;
+                self.write_go(DriverType::RTHETA, Arm::default(), arm_r)?;
                 Ok(())
             }
             DriverType::E => {
-                self.clone().write_go(DriverType::EX, arm_e, Arm::default())?;
-                self.clone().write_go(DriverType::EY, arm_e, Arm::default())?;
-                self.clone().write_go(DriverType::EZ, arm_e, Arm::default())?;
-                self.clone().write_go(DriverType::ETHETA, arm_e, Arm::default())?;
+                self.write_go(DriverType::EX, arm_e, Arm::default())?;
+                self.write_go(DriverType::EY, arm_e, Arm::default())?;
+                self.write_go(DriverType::EZ, arm_e, Arm::default())?;
+                self.write_go(DriverType::ETHETA, arm_e, Arm::default())?;
                 Ok(())
             }
             DriverType::ALL => {
@@ -238,7 +231,7 @@ impl ArmsBackend {
         Ok(())*/
     }
 
-    pub fn pin_go(self, driver_type: DriverType) -> Result<(), HardwareError> {
+    pub fn pin_go(&self, driver_type: DriverType) -> Result<(), HardwareError> {
         match driver_type {
             DriverType::EX => self.driver_x_emetteur.go(),
             DriverType::EY => self.driver_y_emetteur.go(),
@@ -249,20 +242,20 @@ impl ArmsBackend {
             DriverType::RZ => self.driver_z_recepteur.go(),
             DriverType::RTHETA => self.driver_t_recepteur.go(),
             DriverType::R => {
-                self.clone().pin_go(DriverType::RX)?;
-                self.clone().pin_go(DriverType::RY)?;
-                self.clone().pin_go(DriverType::RZ)?;
-                self.clone().pin_go(DriverType::RTHETA)
+                self.pin_go(DriverType::RX)?;
+                self.pin_go(DriverType::RY)?;
+                self.pin_go(DriverType::RZ)?;
+                self.pin_go(DriverType::RTHETA)
             }
             DriverType::E => {
-                self.clone().pin_go(DriverType::EX)?;
-                self.clone().pin_go(DriverType::EY)?;
-                self.clone().pin_go(DriverType::EZ)?;
-                self.clone().pin_go(DriverType::ETHETA)
+                self.pin_go(DriverType::EX)?;
+                self.pin_go(DriverType::EY)?;
+                self.pin_go(DriverType::EZ)?;
+                self.pin_go(DriverType::ETHETA)
             }
             DriverType::ALL => {
-                self.clone().pin_go(DriverType::E)?;
-                self.clone().pin_go(DriverType::R)
+                self.pin_go(DriverType::E)?;
+                self.pin_go(DriverType::R)
             }
         }
     }
@@ -278,20 +271,20 @@ impl ArmsBackend {
             DriverType::RZ => self.driver_z_recepteur.reset(),
             DriverType::RTHETA => self.driver_t_recepteur.reset(),
             DriverType::R => {
-                self.clone().reset(DriverType::RX)?;
-                self.clone().reset(DriverType::RY)?;
-                self.clone().reset(DriverType::RZ)?;
-                self.clone().reset(DriverType::RTHETA)
+                self.reset(DriverType::RX)?;
+                self.reset(DriverType::RY)?;
+                self.reset(DriverType::RZ)?;
+                self.reset(DriverType::RTHETA)
             }
             DriverType::E => {
-                self.clone().reset(DriverType::EX)?;
-                self.clone().reset(DriverType::EY)?;
-                self.clone().reset(DriverType::EZ)?;
-                self.clone().reset(DriverType::ETHETA)
+                self.reset(DriverType::EX)?;
+                self.reset(DriverType::EY)?;
+                self.reset(DriverType::EZ)?;
+                self.reset(DriverType::ETHETA)
             }
             DriverType::ALL => {
-                self.clone().reset(DriverType::E)?;
-                self.clone().reset(DriverType::R)
+                self.reset(DriverType::E)?;
+                self.reset(DriverType::R)
             }
         }
     }
@@ -307,20 +300,20 @@ impl ArmsBackend {
             DriverType::RZ => self.driver_z_recepteur.zero(),
             DriverType::RTHETA => self.driver_t_recepteur.zero(),
             DriverType::R => {
-                self.clone().zero(DriverType::RX)?;
-                self.clone().zero(DriverType::RY)?;
-                self.clone().zero(DriverType::RZ)?;
-                self.clone().zero(DriverType::RTHETA)
+                self.zero(DriverType::RX)?;
+                self.zero(DriverType::RY)?;
+                self.zero(DriverType::RZ)?;
+                self.zero(DriverType::RTHETA)
             }
             DriverType::E => {
-                self.clone().zero(DriverType::EX)?;
-                self.clone().zero(DriverType::EY)?;
-                self.clone().zero(DriverType::EZ)?;
-                self.clone().zero(DriverType::ETHETA)
+                self.zero(DriverType::EX)?;
+                self.zero(DriverType::EY)?;
+                self.zero(DriverType::EZ)?;
+                self.zero(DriverType::ETHETA)
             }
             DriverType::ALL => {
-                self.clone().zero(DriverType::E)?;
-                self.clone().zero(DriverType::R)
+                self.zero(DriverType::E)?;
+                self.zero(DriverType::R)
             }
         }
     }
@@ -335,11 +328,11 @@ impl ArmsBackend {
         Ok(())
     }
 
-    fn start_bassin(self) -> Result<(), HardwareError> {
+    fn start_bassin(&self) -> Result<(), HardwareError> {
         handle_pin_write_error(self.pin_on, 1)
     }
 
-    fn stop_bassin(self) -> Result<(), HardwareError> {
+    fn stop_bassin(&self) -> Result<(), HardwareError> {
         handle_pin_write_error(self.pin_on, 0)
     }
 }
