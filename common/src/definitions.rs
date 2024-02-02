@@ -1,13 +1,69 @@
+use std::fmt::{Display, Formatter};
+
+#[derive(Debug)]
+pub enum Doors{
+    GaucheBas,
+    GaucheHaut,
+    DroiteBas,
+    DroiteHaut
+}
+impl Display for Doors {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Doors::GaucheBas => "Porte Gauche Bas",
+            Doors::GaucheHaut => "Porte Gauche Haut",
+            Doors::DroiteBas => "Porte Droite Bas",
+            Doors::DroiteHaut => "Porte Droite Haut",
+        };
+        write!(f,"{}",s)
+    }
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
+pub enum DriverType {
+    EX,
+    EY,
+    EZ,
+    ETHETA,
+    RX,
+    RY,
+    RZ,
+    RTHETA,
+    R,
+    E,
+    ALL,
+}
+impl Display for DriverType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            DriverType::EX => "Driver pour le moteur X émetteur",
+            DriverType::EY => "Driver pour le moteur Y émetteur",
+            DriverType::EZ => "Driver pour le moteur Z émetteur",
+            DriverType::ETHETA => "Driver pour le moteur Théta émetteur",
+            DriverType::RX => "Driver pour le moteur X récepteur",
+            DriverType::RY => "Driver pour le moteur Y récepteur",
+            DriverType::RZ => "Driver pour le moteur Z récepteur",
+            DriverType::RTHETA => "Driver pour le moteur Théta récepteur",
+            DriverType::E => "Drivers pour les moteur émetteur",
+            DriverType::R => "Drivers pour les moteur récepteur",
+            DriverType::ALL => "Drivers pour tous les moteurs"
+        };
+        write!(f,"{}",s)
+    }
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
 pub enum Command{
-    Go,
-    Reset,
-    Zero,
+    Go(DriverType,Arm,Arm),
+    Reset(DriverType),
+    Zero(DriverType),
     ArrUrg,
+    StopArrUrg,
     ArrMom,
+    StopArrMom,
     Start,
     Stop
 }
-
 
 #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
 #[serde(default)]
@@ -62,34 +118,44 @@ impl Position {
         self.theta = value;
     }
 
-    pub fn to_bytes(self) -> [[u8; 9]; 4] {
-        let x = ((-6025.0 * self.x.abs()) as isize + 8539473) as usize;
-        let y = ((-6025.0 * self.y) as isize + 2984423) as usize;
-        let z = ((6025.0 * self.z) as isize + 2048) as usize;
-        let theta = ((5000.0 * self.theta / 9.0) as isize + 8388608) as usize;
-        let mut bytes: [[u8; 9]; 4] = [[0x08, 0x51, 0x00, 0x01, 0x00, 0x00, 0x00, 0x87, 0xff]; 4];
-
-        // x
-        bytes[0][4] = (x >> 16) as u8;
-        bytes[0][5] = (x >> 8) as u8;
-        bytes[0][6] = (x & 0xff) as u8;
-
-        // y
-        bytes[1][4] = (y >> 16) as u8;
-        bytes[1][5] = (y >> 8) as u8;
-        bytes[1][6] = (y & 0xff) as u8;
-
-        // z
-        bytes[2][4] = (z >> 16) as u8;
-        bytes[2][5] = (z >> 8) as u8;
-        bytes[2][6] = (z & 0xff) as u8;
-
-        // theta
-        bytes[3][4] = (theta >> 16) as u8;
-        bytes[3][5] = (theta >> 8) as u8;
-        bytes[3][6] = (theta & 0xff) as u8;
-
+    pub fn x_to_bytes(self) -> [u8;9]{
+        let x = ((-6025.0 * self.x().abs()) as isize + 8539473) as usize;
+        let mut bytes: [u8;9] = [0x08,0x51,0x00,0x01,0x00, 0x00, 0x00, 0x87, 0xff];
+        bytes[4] = (x >> 16) as u8;
+        bytes[5] = (x >> 8) as u8;
+        bytes[6] = (x & 0xff) as u8;
         return bytes;
+    }
+
+    pub fn y_to_bytes(self) -> [u8;9]{
+        let y = ((-6025.0 * self.y()) as isize + 2984423) as usize;
+        let mut bytes: [u8;9] = [0x08,0x51,0x00,0x01,0x00, 0x00, 0x00, 0x87, 0xff];
+        bytes[4] = (y >> 16) as u8;
+        bytes[5] = (y >> 8) as u8;
+        bytes[6] = (y & 0xff) as u8;
+        return bytes;
+    }
+
+    pub fn z_to_bytes(self) -> [u8;9]{
+        let z = ((6025.0 * self.z) as isize + 2048) as usize;
+        let mut bytes: [u8;9] = [0x08,0x51,0x00,0x01,0x00, 0x00, 0x00, 0x87, 0xff];
+        bytes[4] = (z >> 16) as u8;
+        bytes[5] = (z >> 8) as u8;
+        bytes[6] = (z & 0xff) as u8;
+        return bytes;
+    }
+
+    pub fn theta_to_bytes(self) -> [u8;9]{
+        let theta = ((5000.0 * self.theta / 9.0) as isize + 8388608) as usize;
+        let mut bytes: [u8;9] = [0x08,0x51,0x00,0x01,0x00, 0x00, 0x00, 0x87, 0xff];
+        bytes[4] = (theta >> 16) as u8;
+        bytes[5] = (theta >> 8) as u8;
+        bytes[6] = (theta & 0xff) as u8;
+        return bytes;
+    }
+
+    pub fn to_bytes(self) -> [[u8; 9]; 4] {
+        return [self.x_to_bytes(),self.y_to_bytes(),self.z_to_bytes(),self.theta_to_bytes()];
     }
 }
 

@@ -6,7 +6,10 @@ use sysfs_gpio as gpio;
 use gpio::{
     Direction, Pin,
 };
-use common::error::{HardwareError,DriverType};
+use common::{
+    definitions::DriverType,
+    error::HardwareError,
+};
 
 use crate::error_handler;
 
@@ -88,6 +91,11 @@ impl DriverCnPin {
                 pin_zero = 0;
                 pin_fin_mvt = 0;
             }
+            _ => {
+                pin_go = 0;
+                pin_reset = 0;
+                pin_zero = 0;
+                pin_fin_mvt = 0;}
         }
 
         driver.pin_go = Pin::new(pin_go as u64);
@@ -185,4 +193,16 @@ impl DriverCnPin {
         Ok(())
     }
 
+}
+
+impl Clone for DriverCnPin{
+    fn clone(&self) -> Self {
+        let mut driver = Self::default();
+        driver.driver_type = self.driver_type;
+        driver.pin_go = self.pin_go.clone();
+        driver.pin_zero = self.pin_zero.clone();
+        driver.pin_reset = self.pin_reset.clone();
+        driver.pin_fin_mvt = self.pin_fin_mvt.clone();
+        return driver;
+    }
 }

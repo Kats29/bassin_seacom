@@ -484,7 +484,7 @@ impl TemplateApp {
     }
 
     pub fn send(&mut self) {
-        let data = (self.left, self.right);
+        let data = definitions::Command::Go(definitions::DriverType::ALL,self.left, self.right);
 
         let msg = serde_json::to_string(&data)
             .expect("JSON conversion error");
