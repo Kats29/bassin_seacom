@@ -12,6 +12,8 @@ serde_json = "1.0.111"
 common = { version = "0.1.0", path = "../common" }
 i2c-linux = "0.1.2"
 websocket = { version = "0.27.0", default-features = false, features = ["sync"] }
+futures = "0.3.30"
+async-recursion = "1.0.5"
 
 [build.env]
 # Needed for libudev to cross-compile properly on ARM systems

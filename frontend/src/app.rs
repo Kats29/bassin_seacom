@@ -5,39 +5,59 @@ use eframe::egui;
 use egui_extras::install_image_loaders;
 use serde::{Serialize, Deserialize};
 use serde_json;
-use wasm_sockets::{self, WebSocketError};
+use wasm_sockets::{
+    EventClient,
+    Message,
+    ConnectionStatus,
+};
 use std::{
     panic,
     f32::consts::PI,
-    io::{Read, Write},
 };
-use egui::{Rect, Ui};
+use egui_modal::Modal;
+use std::ops::Deref;
+use std::sync::Mutex;
+use egui::Ui;
 
-use common::definitions;
-use common::definitions::Position;
+use common::{
+    definitions::{
+        Position,
+        Arm,
+        Command,
+        DriverType,
+    },
+    error::{
+        HardwareError
+    }
+};
+pub static ERR_LIST: Mutex<Vec<HardwareError>> = Mutex::new(vec![]);
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(Deserialize, Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct TemplateApp {
-    left: definitions::Arm,
-    right: definitions::Arm,
+    left: Arm,
+    right: Arm,
 
     #[serde(skip)]
-    stream: wasm_sockets::EventClient,
+    stream: EventClient,
+
+    movment_pending: [bool;8],
 }
+
 
 impl Default for TemplateApp {
     fn default() -> Self {
-        let mut left_arm = definitions::Arm::new(true);
+        let mut left_arm = Arm::new(true);
         left_arm.set_next(left_arm.position());
-        let mut right_arm = definitions::Arm::new(false);
+        let mut right_arm = Arm::new(false);
         right_arm.set_next(right_arm.position());
-
+        let client = Self::connect("ws://beaglebone.local:3333");
         Self {
             left: left_arm,
             right: right_arm,
-            stream: Self::connect("ws://beaglebone.local:3333"),
+            stream: client,
+            movment_pending: [false,false,false,false,false,false,false,false],
         }
     }
 }
@@ -63,32 +83,43 @@ impl TemplateApp {
         Default::default()
     }
 
-    pub fn connect(url: &str) -> wasm_sockets::EventClient {
-        let mut client = wasm_sockets::EventClient::new(url).unwrap();
+    pub fn connect(url: &str) -> EventClient {
+        let mut client = EventClient::new(url).unwrap();
 
         client.set_on_error(Some(Box::new(|error| {
             error!("{:#?}", error);
         })));
-        client.set_on_connection(Some(Box::new(|client: &wasm_sockets::EventClient| {
+        client.set_on_connection(Some(Box::new(|client: &EventClient| {
             info!("{:#?}", client.status);
             info!("Connection successfully created");
         })));
         client.set_on_close(Some(Box::new(|_evt| {
-            info!("Connection closed");
+            info!("Il y a plus la connection");
         })));
+
         client.set_on_message(Some(Box::new(
-            |client: &wasm_sockets::EventClient, message: wasm_sockets::Message| {
+            |_, message: Message| {
+                let mess = match message {
+                    Message::Text(string) => string,
+                    _ => "".to_string(),
+                };
+                let obj: Vec<Result<(), HardwareError>> = serde_json::from_str(mess.as_str()).expect("Un pb dans la lecture du JSON FrontEnd");
 
-                // Error handling a faire ici
-                //
-                //
-                //
-                //
-                //
+                let mut errors_string = "".to_string();
 
-                info!("New Message: {:#?}", message);
-            },
-        )));
+                for i in obj {
+                    match i {
+                        Ok(_) => {
+                            info!("Aucun problème rencontré");
+                        }
+                        Err(e) => {
+                            ERR_LIST.lock().unwrap().push(e);
+                            errors_string += format!("\n{}", e).as_str();
+                            info!("{}", e);
+                        }
+                    }
+                }
+            })));
 
         return client;
     }
@@ -166,13 +197,43 @@ impl TemplateApp {
     }
 
     /// Defines the look of the main visual part of the UI
-    pub fn main_view(&mut self, ui: &mut egui::Ui) {
+    pub fn main_view(&mut self, ui: &mut egui::Ui,ctx : &egui::Context) {
         let width = ui.available_width() * (1.0 - 140.0 / 1417.0) / 2.0;
         let used_width = width * (1.0 - 70.0 / 1417.0);
         let height = width * 990.0 / 1417.0;
 
         ui.vertical_centered(|ui|
             {
+                let modal = Modal::new(ctx, "dialog_modal");
+                if ERR_LIST.lock().unwrap().is_empty() == false {
+                    let mut errors_string = "".to_string();
+                    for i in ERR_LIST.lock().unwrap().iter() {
+                        errors_string += format!("\n{}", i).as_str();
+                    }
+
+                    info!("{}",errors_string);
+
+                    // What goes inside the modal
+                    modal.show(|ui| {
+                        // these helper functions help set the ui based on the modal's
+                        // set style, but they are not required and you can put whatever
+                        // ui you want inside [`.show()`]
+                        modal.title(ui, "Erreur lors de la commande");
+                        modal.frame(ui, |ui| {
+                            modal.body(ui, errors_string);
+                        });
+                        modal.buttons(ui, |ui| {
+                            // After clicking, the modal is automatically closed
+                            if modal.button(ui, "close").clicked() {
+                                *ERR_LIST.lock().unwrap() = vec![];
+                                self.movment_pending = [false,false,false,false,false,false,false,false];
+                            };
+                        });
+                    });
+
+                }
+                modal.open();
+
                 // Top view
                 ui.heading("Vue de dessus");
                 egui::Frame::central_panel(ui.style())
@@ -236,8 +297,7 @@ impl TemplateApp {
 
         let rounding = if is_up {
             egui::Rounding::same(5.0)
-        }
-        else {
+        } else {
             let mut i = egui::Rounding::ZERO;
             i.sw = 10.0;
             i.se = 10.0;
@@ -346,14 +406,14 @@ impl TemplateApp {
                 if area.dragged() {
                     let pix_pos = area.rect.center() - ui.min_rect().min;
                     arm.set_next(if is_up {
-                        definitions::Position::new(
+                        Position::new(
                             pix_pos.x * 1347.0 / ui.min_rect().width() + if is_left { -1417.0 } else { 70.0 },
                             -pix_pos.y * 990.0 / ui.min_rect().height() + 495.0,
                             arm.next().z(),
                             arm.next().theta(),
                         )
                     } else {
-                        definitions::Position::new(
+                        Position::new(
                             pix_pos.x * (1347.0 / ui.min_rect().width()) + if is_left { -1417.0 } else { 70.0 },
                             arm.next().y(),
                             pix_pos.y * (680.0 / ui.min_rect().height()),
@@ -369,8 +429,8 @@ impl TemplateApp {
             })
     }
 
-    pub fn send(&mut self, data: definitions::Command) {
-        // let data = definitions::Command::Go(definitions::DriverType::ALL,self.left, self.right);
+    pub fn send(&mut self, data: Command) {
+        // let data = Command::Go(DriverType::ALL,self.left, self.right);
 
         let msg = serde_json::to_string(&data)
             .expect("JSON conversion error");
@@ -379,19 +439,30 @@ impl TemplateApp {
     }
 
     pub fn origin(&mut self) {
+        self.movment_pending = [true,true,true,true,true,true,true,true];
+        self.send(Command::Zero(DriverType::ALL));
+
         self.left.origin();
         self.right.origin();
-        self.send(definitions::Command::Zero(definitions::DriverType::ALL));
     }
 
     pub fn move_next(&mut self) {
         self.left.move_next();
         self.right.move_next();
-        self.send(definitions::Command::Go(definitions::DriverType::ALL, self.left, self.right));
+        self.send(Command::Go(DriverType::ALL, self.left, self.right));
     }
 
     pub fn reset(&mut self) {
-        self.send(definitions::Command::Reset(definitions::DriverType::ALL));
+        self.send(Command::Reset(DriverType::RZ));
+    }
+    pub fn start(&mut self) {
+        self.send(Command::Start);
+    }
+    pub fn stop(&mut self) {
+        self.send(Command::Stop);
+    }
+    pub fn arr_urg(&mut self) {
+        self.send(Command::ArrUrg);
     }
 }
 
@@ -403,7 +474,13 @@ impl eframe::App for TemplateApp {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+
+        /*while *self.stream.status.borrow().deref() == ConnectionStatus::Disconnected || *self.stream.status.borrow().deref() == ConnectionStatus::Error{
+            self.stream = crate::app::TemplateApp::connect("ws::/beaglebone.local:3333");
+        }*/
+
         install_image_loaders(ctx);
+
 
         // Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
         // For inspiration and more examples, go to https://emilk.github.io/egui
@@ -440,21 +517,31 @@ impl eframe::App for TemplateApp {
             );
 
         egui::CentralPanel::default().show(ctx, |ui| {
+
             // The central panel the region left after adding TopPanel's and SidePanel's
             ui.horizontal(|ui| {
+                if ui.button("Start").clicked() {
+                    self.start();
+                }
+                if ui.button("Stop").clicked() {
+                    self.stop();
+                }
+                if ui.button("Arrêt urgence").clicked() {
+                    self.arr_urg();
+                }
+                if ui.button("Reset").clicked() {
+                    self.reset();
+                }
                 if ui.button("Origine").clicked() {
                     self.origin();
                 }
                 if ui.button("Go").clicked() {
                     self.move_next();
                 }
-                if ui.button("Reset").clicked() {
-                    self.reset();
-                }
             });
             ui.add_space(10.0);
 
-            self.main_view(ui);
+            self.main_view(ui,ctx);
 
             ui.add_space(10.0);
         });

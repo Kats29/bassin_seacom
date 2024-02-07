@@ -6,7 +6,7 @@ use common::{
     error::HardwareError,
     definitions::DriverType,
 };
-use crate::error_handler::{handle_i2c_creation_error, handle_i2c_read_error, handle_i2c_set_slave_error, handle_i2c_write_error, handle_pin_direction_error, handle_pin_export_error, handle_pin_read_error};
+use crate::error_handler::{handle_i2c_creation_error, /*handle_i2c_read_error, handle_i2c_set_slave_error, handle_i2c_write_error,*/ handle_pin_direction_error, handle_pin_export_error,/* handle_pin_read_error*/};
 
 pub fn get_i2c_addr_value(i2c_type: DriverType) -> u8 {
     return match i2c_type {
@@ -24,10 +24,10 @@ pub fn get_i2c_addr_value(i2c_type: DriverType) -> u8 {
 
 pub fn get_iqr_pin(i2c_type: DriverType) -> Pin {
     match i2c_type {
-        DriverType::RX | DriverType::EX => Pin::new(0x1),
-        DriverType::EY | DriverType::RY => Pin::new(0x1),
-        DriverType::EZ | DriverType::RZ => Pin::new(0x1),
-        DriverType::ETHETA | DriverType::RTHETA => Pin::new(0x1),
+        DriverType::RX | DriverType::EX => Pin::new(100),
+        DriverType::EY | DriverType::RY => Pin::new(101),
+        DriverType::EZ | DriverType::RZ => Pin::new(102),
+        DriverType::ETHETA | DriverType::RTHETA => Pin::new(103),
         _ => Pin::new(0x00),
     }
 }
@@ -60,20 +60,20 @@ impl DriversCnRs232{
     pub fn new() -> Result<Self,HardwareError>{
         let mut driver = Self::default();
 
-        let mut pin = Pin::new(2);
+        let mut pin = Pin::new(100);
         handle_pin_export_error(pin)?;
         handle_pin_direction_error(pin,Direction::In)?;
 
-        pin = Pin::new(2);
+        pin = Pin::new(101);
         handle_pin_export_error(pin)?;
         handle_pin_direction_error(pin,Direction::In)?;
 
-        pin = Pin::new(2);
+        pin = Pin::new(102);
         handle_pin_export_error(pin)?;
         handle_pin_direction_error(pin,Direction::In)?;
 
 
-        pin = Pin::new(2);
+        pin = Pin::new(103);
         handle_pin_export_error(pin)?;
         handle_pin_direction_error(pin,Direction::In)?;
 

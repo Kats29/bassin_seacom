@@ -19,6 +19,7 @@ pub enum HardwareError {
     PinDirection(u8),
     PinWrite(u8),
     PinRead(u8),
+    UnknownError,
 }
 
 impl Display for HardwareError {
@@ -39,6 +40,7 @@ impl Display for HardwareError {
             HardwareError::PinDirection(p) => format!("Direction du GPIO_{}",p),
             HardwareError::PinWrite(p) => format!("Problème d'écriture du GPIO_{}",p),
             HardwareError::PinRead(p) => format!("Problème de lecture du GPIO_{}",p),
+            _ => {"".to_string()}
         };
         write!(f,"{}",s)
     }

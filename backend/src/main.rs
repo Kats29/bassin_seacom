@@ -9,9 +9,7 @@ mod error_handler;
 
 
 fn main() -> Result<(),HardwareError> {
-    let mut arm =  arm_backend::ArmsBackend::new()?;
-
-    while match tcp_listen(&mut arm) {
+    while match tcp_listen() {
         Ok(_) => false,
         Err(_) => true,
     }{}

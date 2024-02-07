@@ -1,4 +1,7 @@
 use sysfs_gpio::{Direction, Pin};
+use std::sync:: Mutex;
+use async_recursion::async_recursion;
+use futures::executor::block_on;
 use common::{
     definitions::{
         Arm,
@@ -14,6 +17,7 @@ use crate::driver_cn_pin::DriverCnPin;
 use crate::drivers_cn_rs232::DriversCnRs232;
 use crate::error_handler::{handle_pin_direction_error, handle_pin_export_error, handle_pin_read_error, handle_pin_write_error};
 
+pub static ERR_LIST: Mutex<Vec<Result<(), HardwareError>>> = Mutex::new(vec![]);
 
 pub struct ArmsBackend {
     driver_x_emetteur: DriverCnPin,
@@ -97,15 +101,15 @@ impl ArmsBackend {
     }
 
     fn global_pin_creation(&mut self) {
-        self.pin_ar_mom = Pin::new(0);
-        self.pin_on = Pin::new(0);
-        self.pin_ordre_ar_urg = Pin::new(0);
-        self.pin_info_etat = Pin::new(0);
-        self.pin_info_ar_urg = Pin::new(0);
-        self.pin_porte_gauche_bas = Pin::new(0);
-        self.pin_porte_gauche_haut = Pin::new(0);
-        self.pin_porte_droite_bas = Pin::new(0);
-        self.pin_porte_droite_haut = Pin::new(0);
+        self.pin_ordre_ar_urg = Pin::new(60);
+        self.pin_on = Pin::new(61);
+        self.pin_ar_mom = Pin::new(62);
+        self.pin_info_etat = Pin::new(63);
+        self.pin_info_ar_urg = Pin::new(81);
+        self.pin_porte_gauche_bas = Pin::new(86);
+        self.pin_porte_gauche_haut = Pin::new(87);
+        self.pin_porte_droite_bas = Pin::new(88);
+        self.pin_porte_droite_haut = Pin::new(89);
     }
 
     fn global_pin_export(&mut self) -> Result<(), HardwareError> {
@@ -121,20 +125,20 @@ impl ArmsBackend {
         handle_pin_export_error(self.pin_porte_droite_haut)
     }
 
-    fn global_pin_direction(&self) -> Result<(),HardwareError>{
-        handle_pin_direction_error(self.pin_on,Direction::Out)?;
-        handle_pin_direction_error(self.pin_ordre_ar_urg,Direction::Out)?;
-        handle_pin_direction_error(self.pin_ar_mom,Direction::Out)?;
+    fn global_pin_direction(&self) -> Result<(), HardwareError> {
+        handle_pin_direction_error(self.pin_on, Direction::Out)?;
+        handle_pin_direction_error(self.pin_ordre_ar_urg, Direction::Out)?;
+        handle_pin_direction_error(self.pin_ar_mom, Direction::Out)?;
 
-        handle_pin_direction_error(self.pin_info_etat,Direction::In)?;
-        handle_pin_direction_error(self.pin_info_etat,Direction::In)?;
-        handle_pin_direction_error(self.pin_info_ar_urg,Direction::In)?;
-        handle_pin_direction_error(self.pin_porte_gauche_bas,Direction::In)?;
-        handle_pin_direction_error(self.pin_porte_gauche_haut,Direction::In)?;
-        handle_pin_direction_error(self.pin_porte_droite_bas,Direction::In)
+        handle_pin_direction_error(self.pin_info_etat, Direction::In)?;
+        handle_pin_direction_error(self.pin_info_etat, Direction::In)?;
+        handle_pin_direction_error(self.pin_info_ar_urg, Direction::In)?;
+        handle_pin_direction_error(self.pin_porte_gauche_bas, Direction::In)?;
+        handle_pin_direction_error(self.pin_porte_gauche_haut, Direction::In)?;
+        handle_pin_direction_error(self.pin_porte_droite_bas, Direction::In)
     }
 
-    fn check_status(&self) -> Result<(), HardwareError> {
+    pub fn check_status(&self) -> Result<(), HardwareError> {
         if handle_pin_read_error(self.pin_ar_mom)? != 0 {
             return Err(HardwareError::ArrMom);
         }
@@ -163,20 +167,21 @@ impl ArmsBackend {
         Ok(())
     }
 
-    pub fn update(&self, command: Command) -> Result<(), HardwareError> {
+    pub fn update(&mut self, command: Command) -> Result<(), HardwareError> {
         println!("nouvelle commande");
-        //self.check_status()?;
+        // self.check_status()?;
+
         match command {
             Command::Go(dt, arm_e, arm_r) => {
-                println!("Go pour {}",dt);
+                println!("Go pour {}", dt);
                 self.write_go(dt, arm_e, arm_r)?;
-                self.pin_go(dt)
+                block_on(self.pin_go(dt))
             }
-            Command::Reset(dt) => self.reset(dt),
+            Command::Reset(dt) => block_on(self.reset(dt)),
             Command::Zero(dt) => {
                 println!("Retour a l'origine");
                 self.zero(dt)
-            },
+            }
             Command::ArrUrg => self.arr_urg(true),
             Command::StopArrUrg => self.arr_urg(false),
             Command::ArrMom => self.arr_mom(true),
@@ -188,14 +193,14 @@ impl ArmsBackend {
 
     pub fn write_go(&self, driver_type: DriverType, arm_e: Arm, arm_r: Arm) -> Result<(), HardwareError> {
         match driver_type {
-            DriverType::EX => self.driver_rs232.write_i2c(arm_e.position().x_to_bytes(), driver_type),
-            DriverType::EY => self.driver_rs232.write_i2c(arm_e.position().y_to_bytes(), driver_type),
-            DriverType::EZ => self.driver_rs232.write_i2c(arm_e.position().z_to_bytes(), driver_type),
-            DriverType::ETHETA => self.driver_rs232.write_i2c(arm_e.position().theta_to_bytes(), driver_type),
-            DriverType::RX => self.driver_rs232.write_i2c(arm_r.position().x_to_bytes(), driver_type),
-            DriverType::RY => self.driver_rs232.write_i2c(arm_r.position().y_to_bytes(), driver_type),
-            DriverType::RZ => self.driver_rs232.write_i2c(arm_r.position().z_to_bytes(), driver_type),
-            DriverType::RTHETA => self.driver_rs232.write_i2c(arm_r.position().theta_to_bytes(), driver_type),
+            DriverType::EX => self.driver_rs232.write_i2c(arm_e.next().x_to_bytes(), driver_type),
+            DriverType::EY => self.driver_rs232.write_i2c(arm_e.next().y_to_bytes(), driver_type),
+            DriverType::EZ => self.driver_rs232.write_i2c(arm_e.next().z_to_bytes(), driver_type),
+            DriverType::ETHETA => self.driver_rs232.write_i2c(arm_e.next().theta_to_bytes(), driver_type),
+            DriverType::RX => self.driver_rs232.write_i2c(arm_r.next().x_to_bytes(), driver_type),
+            DriverType::RY => self.driver_rs232.write_i2c(arm_r.next().y_to_bytes(), driver_type),
+            DriverType::RZ => self.driver_rs232.write_i2c(arm_r.next().z_to_bytes(), driver_type),
+            DriverType::RTHETA => self.driver_rs232.write_i2c(arm_r.next().theta_to_bytes(), driver_type),
             DriverType::R => {
                 self.write_go(DriverType::RX, Arm::default(), arm_r)?;
                 self.write_go(DriverType::RY, Arm::default(), arm_r)?;
@@ -231,7 +236,8 @@ impl ArmsBackend {
         Ok(())*/
     }
 
-    pub fn pin_go(&self, driver_type: DriverType) -> Result<(), HardwareError> {
+    #[async_recursion]
+    pub async fn pin_go(&self, driver_type: DriverType) -> Result<(), HardwareError> {
         match driver_type {
             DriverType::EX => self.driver_x_emetteur.go(),
             DriverType::EY => self.driver_y_emetteur.go(),
@@ -242,54 +248,163 @@ impl ArmsBackend {
             DriverType::RZ => self.driver_z_recepteur.go(),
             DriverType::RTHETA => self.driver_t_recepteur.go(),
             DriverType::R => {
-                self.pin_go(DriverType::RX)?;
-                self.pin_go(DriverType::RY)?;
-                self.pin_go(DriverType::RZ)?;
-                self.pin_go(DriverType::RTHETA)
+                let x = self.pin_go(DriverType::RX);
+                let y = self.pin_go(DriverType::RY);
+                let z = self.pin_go(DriverType::RZ);
+                let t = self.pin_go(DriverType::RTHETA);
+                let a= futures::join!(x,y,z,t);
+                let vec= vec![a.0,a.1,a.2,a.3];
+
+                for n in vec{
+                    match n {
+                        Ok(_) => {},
+                        Err(a) => {
+                            ERR_LIST.lock().unwrap().push(Err(a));
+                        },
+                    }
+                }
+
+                if ERR_LIST.lock().unwrap().is_empty() {
+                    return Ok(());
+                }
+                Err(HardwareError::UnknownError)
             }
             DriverType::E => {
-                self.pin_go(DriverType::EX)?;
-                self.pin_go(DriverType::EY)?;
-                self.pin_go(DriverType::EZ)?;
-                self.pin_go(DriverType::ETHETA)
+
+                let x = self.pin_go(DriverType::EX);
+                let y = self.pin_go(DriverType::EY);
+                let z = self.pin_go(DriverType::EZ);
+                let t = self.pin_go(DriverType::ETHETA);
+                let a =futures::join!(x,y,z,t);
+                let vec= vec![a.0,a.1,a.2,a.3];
+
+                for n in vec{
+                    match n {
+                        Ok(_) => {},
+                        Err(a) => {
+                            ERR_LIST.lock().unwrap().push(Err(a));
+                        },
+                    }
+                }
+
+                if ERR_LIST.lock().unwrap().is_empty() {
+                    return Ok(());
+                }
+                Err(HardwareError::UnknownError)
             }
             DriverType::ALL => {
-                self.pin_go(DriverType::E)?;
-                self.pin_go(DriverType::R)
+                let r = self.pin_go(DriverType::R);
+                let e = self.pin_go(DriverType::E);
+                let a = futures::join!(r,e);
+                let vec= vec![a.0,a.1];
+
+                for n in vec{
+                    match n {
+                        Ok(_) => {},
+                        Err(a) => {
+                            ERR_LIST.lock().unwrap().push(Err(a));
+                        },
+                    }
+                }
+                if ERR_LIST.lock().unwrap().is_empty() {
+                    return Ok(());
+                }
+                Err(HardwareError::UnknownError)
+
             }
         }
     }
 
-    pub fn reset(&self, dt: DriverType) -> Result<(), HardwareError> {
+    #[async_recursion]
+    pub async fn reset(&self, dt: DriverType) -> Result<(), HardwareError> {
         match dt {
-            DriverType::EX => self.driver_x_emetteur.reset(),
+            DriverType::EX => self.driver_x_emetteur.reset() ,
+            DriverType::EY => self.driver_y_emetteur.reset() ,
+            DriverType::EZ => self.driver_z_emetteur.reset() ,
+            DriverType::ETHETA => self.driver_t_emetteur.reset() ,
+            DriverType::RX => self.driver_x_recepteur.reset() ,
+            DriverType::RY => self.driver_y_recepteur.reset() ,
+            DriverType::RZ => self.driver_z_recepteur.reset() ,
+            DriverType::RTHETA => self.driver_t_recepteur.reset(),
+            /*
             DriverType::EY => self.driver_y_emetteur.reset(),
             DriverType::EZ => self.driver_z_emetteur.reset(),
             DriverType::ETHETA => self.driver_t_emetteur.reset(),
+
             DriverType::RX => self.driver_x_recepteur.reset(),
             DriverType::RY => self.driver_y_recepteur.reset(),
             DriverType::RZ => self.driver_z_recepteur.reset(),
             DriverType::RTHETA => self.driver_t_recepteur.reset(),
+            */
             DriverType::R => {
-                self.reset(DriverType::RX)?;
-                self.reset(DriverType::RY)?;
-                self.reset(DriverType::RZ)?;
-                self.reset(DriverType::RTHETA)
+                let x = self.reset(DriverType::RX);
+                let y = self.reset(DriverType::RY);
+                let z = self.reset(DriverType::RZ);
+                let t = self.reset(DriverType::RTHETA);
+                let a= futures::join!(x,y,z,t);
+                let vec= vec![a.0,a.1,a.2,a.3];
+
+                for n in vec{
+                    match n {
+                        Ok(_) => {},
+                        Err(a) => {
+                            ERR_LIST.lock().unwrap().push(Err(a));
+                        },
+                    }
+                }
+
+                if ERR_LIST.lock().unwrap().is_empty() {
+                    return Ok(());
+                }
+                Err(HardwareError::UnknownError)
             }
             DriverType::E => {
-                self.reset(DriverType::EX)?;
-                self.reset(DriverType::EY)?;
-                self.reset(DriverType::EZ)?;
-                self.reset(DriverType::ETHETA)
+
+                let x = self.reset(DriverType::EX);
+                let y = self.reset(DriverType::EY);
+                let z = self.reset(DriverType::EZ);
+                let t = self.reset(DriverType::ETHETA);
+                let a =futures::join!(x,y,z,t);
+                let vec= vec![a.0,a.1,a.2,a.3];
+
+                for n in vec{
+                    match n {
+                        Ok(_) => {},
+                        Err(a) => {
+                            ERR_LIST.lock().unwrap().push(Err(a));
+                        },
+                    }
+                }
+
+                if ERR_LIST.lock().unwrap().is_empty() {
+                    return Ok(());
+                }
+                Err(HardwareError::UnknownError)
             }
             DriverType::ALL => {
-                self.reset(DriverType::E)?;
-                self.reset(DriverType::R)
+                let r = self.reset(DriverType::R);
+                let e = self.reset(DriverType::E);
+                let a = futures::join!(r,e);
+                let vec= vec![a.0,a.1];
+
+                for n in vec{
+                    match n {
+                        Ok(_) => {},
+                        Err(a) => {
+                            ERR_LIST.lock().unwrap().push(Err(a));
+                        },
+                    }
+                }
+                if ERR_LIST.lock().unwrap().is_empty() {
+                    return Ok(());
+                }
+                Err(HardwareError::UnknownError)
+
             }
         }
     }
 
-    pub fn zero(&self,driver_type: DriverType) -> Result<(), HardwareError> {
+    pub fn zero(&self, driver_type: DriverType) -> Result<(), HardwareError> {
         match driver_type {
             DriverType::EX => self.driver_x_emetteur.zero(),
             DriverType::EY => self.driver_y_emetteur.zero(),
@@ -337,7 +452,7 @@ impl ArmsBackend {
     }
 }
 
-impl Clone for ArmsBackend{
+impl Clone for ArmsBackend {
     fn clone(&self) -> Self {
         let mut new_arm = ArmsBackend::default();
         new_arm.driver_x_emetteur = self.driver_x_emetteur.clone();
@@ -361,7 +476,7 @@ impl Clone for ArmsBackend{
         new_arm.pin_porte_gauche_haut = self.pin_porte_gauche_haut.clone();
         new_arm.pin_porte_droite_bas = self.pin_porte_droite_bas.clone();
         new_arm.pin_porte_droite_haut = self.pin_porte_droite_haut.clone();
-        
+
         return new_arm;
     }
 }
