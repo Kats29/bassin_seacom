@@ -9,10 +9,10 @@ mod error_handler;
 
 
 fn main() -> Result<(),HardwareError> {
-    while match tcp_listen() {
-        Ok(_) => false,
-        Err(_) => true,
-    }{}
-    Ok(())
-
+    loop {
+        match tcp_listen() {
+            Ok(_) => {}
+            Err(_) => {}
+        };
+    }
 }

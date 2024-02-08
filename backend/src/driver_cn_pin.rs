@@ -129,28 +129,16 @@ impl DriverCnPin {
         return Ok(());
     }
 
-    fn set_default_pin(&self) -> Result<(),HardwareError>{
-        error_handler::handle_pin_write_error(self.pin_go,0)?;
-        error_handler::handle_pin_write_error(self.pin_reset,0)?;
-        error_handler::handle_pin_write_error(self.pin_zero,0)
-    }
 
     fn get_driver_type(& self) -> DriverType {
         return self.driver_type;
     }
 
     pub fn go(&self) -> Result<(),HardwareError> {
-        let go =
-            error_handler::handle_pin_read_error(self.pin_go)?;
-        match self.pin_go.get_value() {
-            Ok(a) => Ok(a),
-            Err(_) => Err(HardwareError::PinRead(self.pin_go.get_pin() as u8)),
-        }?;
+        let go = error_handler::handle_pin_read_error(self.pin_go)?;
 
-        let fin_mvt = match self.pin_fin_mvt.get_value() {
-            Ok(a) => Ok(a),
-            Err(_) => Err(HardwareError::PinRead(self.pin_fin_mvt.get_pin() as u8)),
-        }?;
+
+        let fin_mvt = error_handler::handle_pin_read_error(self.pin_fin_mvt)?;
 
         if go == 1 || fin_mvt == 0 {
             return Err(HardwareError::MovmentNotFinished(self.get_driver_type()));
@@ -197,6 +185,17 @@ impl DriverCnPin {
             Ok(_) => Ok(()),
             Err(_) => Err(HardwareError::PinWrite(self.pin_zero.get_pin() as u8)),
         }?;
+        Ok(())
+    }
+
+    pub fn movement_finished(&self) -> Result<(),HardwareError> {
+        let go = error_handler::handle_pin_read_error(self.pin_go)?;
+
+        let fin_mvt = error_handler::handle_pin_read_error(self.pin_fin_mvt)?;
+
+        if go == 1 || fin_mvt == 0 {
+            return Err(HardwareError::MovmentNotFinished(self.get_driver_type()));
+        }
         Ok(())
     }
 

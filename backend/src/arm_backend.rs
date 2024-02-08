@@ -1,23 +1,25 @@
-use sysfs_gpio::{Direction, Pin};
-use std::sync:: Mutex;
+use std::cell::RefCell;
+use std::sync::Mutex;
+
 use async_recursion::async_recursion;
 use futures::executor::block_on;
+use sysfs_gpio::{Direction, Pin};
+
 use common::{
     definitions::{
         Arm,
         Command,
-        DriverType,
         Doors,
+        DriverType,
     },
-    error::{
-        HardwareError,
-    },
+    error::HardwareError,
 };
+
 use crate::driver_cn_pin::DriverCnPin;
 use crate::drivers_cn_rs232::DriversCnRs232;
 use crate::error_handler::{handle_pin_direction_error, handle_pin_export_error, handle_pin_read_error, handle_pin_write_error};
 
-pub static ERR_LIST: Mutex<Vec<Result<(), HardwareError>>> = Mutex::new(vec![]);
+pub static ERR_LIST: Mutex<RefCell<Vec<Result<(), HardwareError>>>> = Mutex::new(RefCell::new(vec![]));
 
 pub struct ArmsBackend {
     driver_x_emetteur: DriverCnPin,
@@ -138,33 +140,171 @@ impl ArmsBackend {
         handle_pin_direction_error(self.pin_porte_droite_bas, Direction::In)
     }
 
-    pub fn check_status(&self) -> Result<(), HardwareError> {
-        if handle_pin_read_error(self.pin_ar_mom)? != 0 {
-            return Err(HardwareError::ArrMom);
+    pub fn check_status(&self) -> Vec<Result<(), HardwareError>> {
+        let mut vec_error = vec![];
+        match handle_pin_read_error(self.pin_ar_mom) {
+            Ok(result) => {
+                if result == 1 {
+                    vec_error.push(Err(HardwareError::ArrMom));
+                }
+            }
+            Err(e) => {
+                vec_error.push(Err(e));
+            }
         }
 
-        if handle_pin_read_error(self.pin_info_etat)? != 1 {
-            if handle_pin_read_error(self.pin_on)? != 1 {
-                return Err(HardwareError::NotStarted);
+        match handle_pin_read_error(self.pin_info_ar_urg) {
+            Ok(result) => {
+                if result == 1 {
+                    vec_error.push(Err(HardwareError::ArrUrg));
+                }
             }
-            return Err(HardwareError::NotPowered);
+            Err(e) => {
+                vec_error.push(Err(e));
+            }
         }
-        if handle_pin_read_error(self.pin_info_ar_urg)? != 0 {
-            return Err(HardwareError::ArrUrg);
+
+        match handle_pin_read_error(self.pin_info_etat) {
+            Ok(result) => {
+                if result == 0 {
+                    match handle_pin_read_error(self.pin_on) {
+                        Ok(result_2) => {
+                            if result_2 == 1 {
+                                vec_error.push(Err(HardwareError::NotStarted));
+
+                            }else {
+                                vec_error.push(Err(HardwareError::NotPowered));
+                            }
+                        }
+                        Err(e) => {
+                            vec_error.push(Err(e));
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                vec_error.push(Err(e));
+            }
         }
-        if handle_pin_read_error(self.pin_porte_gauche_bas)? != 1 {
-            return Err(HardwareError::OpenDoor(Doors::GaucheBas));
+
+        match handle_pin_read_error(self.pin_porte_gauche_bas) {
+            Ok(result) => {
+                if result == 0 {
+                    vec_error.push(Err(HardwareError::OpenDoor(Doors::GaucheBas)));
+                }
+            }
+            Err(e) => {
+                vec_error.push(Err(e));
+            }
         }
-        if handle_pin_read_error(self.pin_porte_gauche_haut)? != 1 {
-            return Err(HardwareError::OpenDoor(Doors::GaucheHaut));
+        match handle_pin_read_error(self.pin_porte_gauche_haut) {
+            Ok(result) => {
+                if result == 0 {
+                    vec_error.push(Err(HardwareError::OpenDoor(Doors::GaucheBas)));
+                }
+            }
+            Err(e) => {
+                vec_error.push(Err(e));
+            }
         }
-        if handle_pin_read_error(self.pin_porte_droite_bas)? != 1 {
-            return Err(HardwareError::OpenDoor(Doors::DroiteBas));
+        match handle_pin_read_error(self.pin_porte_droite_bas) {
+            Ok(result) => {
+                if result == 0 {
+                    vec_error.push(Err(HardwareError::OpenDoor(Doors::DroiteBas)));
+                }
+            }
+            Err(e) => {
+                vec_error.push(Err(e));
+            }
         }
-        if handle_pin_read_error(self.pin_porte_droite_haut)? != 1 {
-            return Err(HardwareError::OpenDoor(Doors::DroiteHaut));
+        match handle_pin_read_error(self.pin_porte_droite_haut) {
+            Ok(result) => {
+                if result == 0 {
+                    vec_error.push(Err(HardwareError::OpenDoor(Doors::DroiteHaut)));
+                }
+            }
+            Err(e) => {
+                vec_error.push(Err(e));
+            }
         }
-        Ok(())
+
+        vec_error.append(self.movement_finished().as_mut());
+
+        if vec_error.is_empty(){
+            vec_error.push(Ok(()));
+        }
+
+        return vec_error;
+    }
+
+    fn movement_finished(&self) -> Vec<Result<(),HardwareError>> {
+        let mut error = vec![];
+
+        match self.driver_x_emetteur.movement_finished() {
+            Ok(_) => {
+            }
+            Err(e) => {
+                error.push(Err(e));
+            }
+        }
+
+        match self.driver_y_emetteur.movement_finished() {
+            Ok(_) => {
+            }
+            Err(e) => {
+                error.push(Err(e));
+            }
+        }
+
+        match self.driver_z_emetteur.movement_finished() {
+            Ok(_) => {
+            }
+            Err(e) => {
+                error.push(Err(e));
+            }
+        }
+
+        match self.driver_t_emetteur.movement_finished() {
+            Ok(_) => {
+            }
+            Err(e) => {
+                error.push(Err(e));
+            }
+        }
+
+        match self.driver_x_recepteur.movement_finished() {
+            Ok(_) => {
+            }
+            Err(e) => {
+                error.push(Err(e));
+            }
+        }
+
+        match self.driver_y_recepteur.movement_finished() {
+            Ok(_) => {
+            }
+            Err(e) => {
+                error.push(Err(e));
+            }
+        }
+
+        match self.driver_z_recepteur.movement_finished() {
+            Ok(_) => {
+            }
+            Err(e) => {
+                error.push(Err(e));
+            }
+        }
+
+        match self.driver_t_recepteur.movement_finished() {
+            Ok(_) => {
+            }
+            Err(e) => {
+                error.push(Err(e));
+            }
+        }
+
+        error
     }
 
     pub fn update(&mut self, command: Command) -> Result<(), HardwareError> {
@@ -252,42 +392,41 @@ impl ArmsBackend {
                 let y = self.pin_go(DriverType::RY);
                 let z = self.pin_go(DriverType::RZ);
                 let t = self.pin_go(DriverType::RTHETA);
-                let a= futures::join!(x,y,z,t);
-                let vec= vec![a.0,a.1,a.2,a.3];
+                let a = futures::join!(x,y,z,t);
+                let vec = vec![a.0, a.1, a.2, a.3];
 
-                for n in vec{
+                for n in vec {
                     match n {
-                        Ok(_) => {},
+                        Ok(_) => {}
                         Err(a) => {
-                            ERR_LIST.lock().unwrap().push(Err(a));
-                        },
+                            ERR_LIST.lock().unwrap().borrow_mut().push(Err(a));
+                        }
                     }
                 }
 
-                if ERR_LIST.lock().unwrap().is_empty() {
+                if ERR_LIST.lock().unwrap().borrow().is_empty() {
                     return Ok(());
                 }
                 Err(HardwareError::UnknownError)
             }
             DriverType::E => {
-
                 let x = self.pin_go(DriverType::EX);
                 let y = self.pin_go(DriverType::EY);
                 let z = self.pin_go(DriverType::EZ);
                 let t = self.pin_go(DriverType::ETHETA);
-                let a =futures::join!(x,y,z,t);
-                let vec= vec![a.0,a.1,a.2,a.3];
+                let a = futures::join!(x,y,z,t);
+                let vec = vec![a.0, a.1, a.2, a.3];
 
-                for n in vec{
+                for n in vec {
                     match n {
-                        Ok(_) => {},
+                        Ok(_) => {}
                         Err(a) => {
-                            ERR_LIST.lock().unwrap().push(Err(a));
-                        },
+                            ERR_LIST.lock().unwrap().borrow_mut().push(Err(a));
+                        }
                     }
                 }
 
-                if ERR_LIST.lock().unwrap().is_empty() {
+                if ERR_LIST.lock().unwrap().borrow().is_empty() {
                     return Ok(());
                 }
                 Err(HardwareError::UnknownError)
@@ -296,21 +435,20 @@ impl ArmsBackend {
                 let r = self.pin_go(DriverType::R);
                 let e = self.pin_go(DriverType::E);
                 let a = futures::join!(r,e);
-                let vec= vec![a.0,a.1];
+                let vec = vec![a.0, a.1];
 
-                for n in vec{
+                for n in vec {
                     match n {
-                        Ok(_) => {},
+                        Ok(_) => {}
                         Err(a) => {
-                            ERR_LIST.lock().unwrap().push(Err(a));
-                        },
+                            ERR_LIST.lock().unwrap().borrow_mut().push(Err(a));
+                        }
                     }
                 }
-                if ERR_LIST.lock().unwrap().is_empty() {
+                if ERR_LIST.lock().unwrap().borrow().is_empty() {
                     return Ok(());
                 }
                 Err(HardwareError::UnknownError)
-
             }
         }
     }
@@ -318,13 +456,13 @@ impl ArmsBackend {
     #[async_recursion]
     pub async fn reset(&self, dt: DriverType) -> Result<(), HardwareError> {
         match dt {
-            DriverType::EX => self.driver_x_emetteur.reset() ,
-            DriverType::EY => self.driver_y_emetteur.reset() ,
-            DriverType::EZ => self.driver_z_emetteur.reset() ,
-            DriverType::ETHETA => self.driver_t_emetteur.reset() ,
-            DriverType::RX => self.driver_x_recepteur.reset() ,
-            DriverType::RY => self.driver_y_recepteur.reset() ,
-            DriverType::RZ => self.driver_z_recepteur.reset() ,
+            DriverType::EX => self.driver_x_emetteur.reset(),
+            DriverType::EY => self.driver_y_emetteur.reset(),
+            DriverType::EZ => self.driver_z_emetteur.reset(),
+            DriverType::ETHETA => self.driver_t_emetteur.reset(),
+            DriverType::RX => self.driver_x_recepteur.reset(),
+            DriverType::RY => self.driver_y_recepteur.reset(),
+            DriverType::RZ => self.driver_z_recepteur.reset(),
             DriverType::RTHETA => self.driver_t_recepteur.reset(),
             /*
             DriverType::EY => self.driver_y_emetteur.reset(),
@@ -341,42 +479,41 @@ impl ArmsBackend {
                 let y = self.reset(DriverType::RY);
                 let z = self.reset(DriverType::RZ);
                 let t = self.reset(DriverType::RTHETA);
-                let a= futures::join!(x,y,z,t);
-                let vec= vec![a.0,a.1,a.2,a.3];
+                let a = futures::join!(x,y,z,t);
+                let vec = vec![a.0, a.1, a.2, a.3];
 
-                for n in vec{
+                for n in vec {
                     match n {
-                        Ok(_) => {},
+                        Ok(_) => {}
                         Err(a) => {
-                            ERR_LIST.lock().unwrap().push(Err(a));
-                        },
+                            ERR_LIST.lock().unwrap().borrow_mut().push(Err(a));
+                        }
                     }
                 }
 
-                if ERR_LIST.lock().unwrap().is_empty() {
+                if ERR_LIST.lock().unwrap().borrow().is_empty() {
                     return Ok(());
                 }
                 Err(HardwareError::UnknownError)
             }
             DriverType::E => {
-
                 let x = self.reset(DriverType::EX);
                 let y = self.reset(DriverType::EY);
                 let z = self.reset(DriverType::EZ);
                 let t = self.reset(DriverType::ETHETA);
-                let a =futures::join!(x,y,z,t);
-                let vec= vec![a.0,a.1,a.2,a.3];
+                let a = futures::join!(x,y,z,t);
+                let vec = vec![a.0, a.1, a.2, a.3];
 
-                for n in vec{
+                for n in vec {
                     match n {
-                        Ok(_) => {},
+                        Ok(_) => {}
                         Err(a) => {
-                            ERR_LIST.lock().unwrap().push(Err(a));
-                        },
+                            ERR_LIST.lock().unwrap().borrow_mut().push(Err(a));
+                        }
                     }
                 }
 
-                if ERR_LIST.lock().unwrap().is_empty() {
+                if ERR_LIST.lock().unwrap().borrow().is_empty() {
                     return Ok(());
                 }
                 Err(HardwareError::UnknownError)
@@ -385,21 +522,20 @@ impl ArmsBackend {
                 let r = self.reset(DriverType::R);
                 let e = self.reset(DriverType::E);
                 let a = futures::join!(r,e);
-                let vec= vec![a.0,a.1];
+                let vec = vec![a.0, a.1];
 
-                for n in vec{
+                for n in vec {
                     match n {
-                        Ok(_) => {},
+                        Ok(_) => {}
                         Err(a) => {
-                            ERR_LIST.lock().unwrap().push(Err(a));
-                        },
+                            ERR_LIST.lock().unwrap().borrow_mut().push(Err(a));
+                        }
                     }
                 }
-                if ERR_LIST.lock().unwrap().is_empty() {
+                if ERR_LIST.lock().unwrap().borrow().is_empty() {
                     return Ok(());
                 }
                 Err(HardwareError::UnknownError)
-
             }
         }
     }

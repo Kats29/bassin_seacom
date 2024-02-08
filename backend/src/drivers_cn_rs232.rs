@@ -6,7 +6,7 @@ use common::{
     error::HardwareError,
     definitions::DriverType,
 };
-use crate::error_handler::{handle_i2c_creation_error, /*handle_i2c_read_error, handle_i2c_set_slave_error, handle_i2c_write_error,*/ handle_pin_direction_error, handle_pin_export_error,/* handle_pin_read_error*/};
+use crate::error_handler::{handle_i2c_creation_error, /*handle_i2c_read_error, handle_i2c_set_slave_error, handle_i2c_write_error,*/ handle_pin_direction_error, handle_pin_export_error, handle_pin_read_error};
 
 pub fn get_i2c_addr_value(i2c_type: DriverType) -> u8 {
     return match i2c_type {
