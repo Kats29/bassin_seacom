@@ -17,7 +17,10 @@ use std::{
 use egui_modal::Modal;
 use std::ops::Deref;
 use std::sync::Mutex;
-use egui::Ui;
+use egui::{
+    Ui,
+    Widget
+};
 
 use common::{
     definitions::{
@@ -26,10 +29,9 @@ use common::{
         Command,
         DriverType,
     },
-    error::{
-        HardwareError
-    }
+    error::HardwareError
 };
+
 pub static ERR_LIST: Mutex<Vec<HardwareError>> = Mutex::new(vec![]);
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -103,21 +105,29 @@ impl TemplateApp {
                     Message::Text(string) => string,
                     _ => "".to_string(),
                 };
-                let obj: Vec<Result<(), HardwareError>> = serde_json::from_str(mess.as_str()).expect("Un pb dans la lecture du JSON FrontEnd");
+                let obj: (u32, Vec<Result<(), HardwareError>>) = serde_json::from_str(mess.as_str()).expect("Un pb dans la lecture du JSON FrontEnd");
 
                 let mut errors_string = "".to_string();
 
-                for i in obj {
-                    match i {
-                        Ok(_) => {
-                            info!("Aucun problème rencontré");
+                match obj.0 {
+                    0 => {
+                        for i in obj.1 {
+                            match i {
+                                Ok(_) => {
+                                    info!("Aucun problème rencontré");
+                                }
+                                Err(e) => {
+                                    ERR_LIST.lock().unwrap().push(e);
+                                    errors_string += format!("\n{}", e).as_str();
+                                    info!("{}", e);
+                                }
+                            }
                         }
-                        Err(e) => {
-                            ERR_LIST.lock().unwrap().push(e);
-                            errors_string += format!("\n{}", e).as_str();
-                            info!("{}", e);
-                        }
-                    }
+                    },
+                    1 => {
+                        // TODO
+                    },
+                    _ => ()
                 }
             })));
 
@@ -143,6 +153,9 @@ impl TemplateApp {
 
                 ui.horizontal(|ui| {
                     let mut val = next.x();
+                    if !is_emitter {
+                        ui.add_space(20.0);
+                    }
                     ui.add(egui::Slider::new(
                         &mut val,
                         match is_emitter {
@@ -157,6 +170,9 @@ impl TemplateApp {
 
                 ui.horizontal(|ui| {
                     let mut val = next.y();
+                    if !is_emitter {
+                        ui.add_space(20.0);
+                    }
                     ui.add(egui::Slider::new(
                         &mut val,
                         -495.0..=495.0,
@@ -168,6 +184,9 @@ impl TemplateApp {
 
                 ui.horizontal(|ui| {
                     let mut val = next.z();
+                    if !is_emitter {
+                        ui.add_space(20.0);
+                    }
                     ui.add(egui::Slider::new(
                         &mut val,
                         0.0..=680.0,
@@ -179,6 +198,9 @@ impl TemplateApp {
 
                 ui.horizontal(|ui| {
                     let mut val = next.theta();
+                    if !is_emitter {
+                        ui.add_space(20.0);
+                    }
                     ui.add(egui::Slider::new(
                         &mut val,
                         -180.0..=180.0,
@@ -198,7 +220,8 @@ impl TemplateApp {
 
     /// Defines the look of the main visual part of the UI
     pub fn main_view(&mut self, ui: &mut egui::Ui,ctx : &egui::Context) {
-        let width = ui.available_width() * (1.0 - 140.0 / 1417.0) / 2.0;
+        let width = (ui.available_width() / 2.0 - 20.0)
+            .min((ui.available_height() / 2.0 - 10.0) * 1417.0 / 990.0);
         let used_width = width * (1.0 - 70.0 / 1417.0);
         let height = width * 990.0 / 1417.0;
 
@@ -210,8 +233,6 @@ impl TemplateApp {
                     for i in ERR_LIST.lock().unwrap().iter() {
                         errors_string += format!("\n{}", i).as_str();
                     }
-
-                    info!("{}",errors_string);
 
                     // What goes inside the modal
                     modal.show(|ui| {
@@ -237,13 +258,16 @@ impl TemplateApp {
                 // Top view
                 ui.heading("Vue de dessus");
                 egui::Frame::central_panel(ui.style())
+                    .inner_margin(egui::Margin::same(10.0))
+                    .outer_margin({
+                        let mut margin = egui::Margin::ZERO;
+                        margin.left = ui.available_width() / 2.0 - width - 10.0;
+                        margin
+                    })
                     .fill(egui::Color32::LIGHT_BLUE)
-                    .rounding(egui::Rounding::same(5.0))
+                    .rounding(egui::Rounding::same(10.0))
                     .show(ui, |ui| {
-                        ui.add_space(10.0);
                         ui.horizontal(|ui| {
-                            ui.add_space(10.0);
-
                             // Left half
 
                             self.get_new_frame(true, true, ui, height, used_width);
@@ -252,10 +276,7 @@ impl TemplateApp {
 
                             // Right half
                             self.get_new_frame(false, true, ui, height, used_width);
-
-                            ui.add_space(10.0);
                         });
-                        ui.add_space(10.0);
                     });
 
                 ui.add_space(10.0);
@@ -266,13 +287,16 @@ impl TemplateApp {
                 // Side view
                 ui.heading("Vue de côté");
                 egui::Frame::central_panel(ui.style())
+                    .inner_margin(egui::Margin::same(10.0))
+                    .outer_margin({
+                        let mut margin = egui::Margin::ZERO;
+                        margin.left = ui.available_width() / 2.0 - width - 10.0;
+                        margin
+                    })
                     .fill(egui::Color32::LIGHT_BLUE)
-                    .rounding(egui::Rounding::same(5.0))
+                    .rounding(egui::Rounding::same(10.0))
                     .show(ui, |ui| {
-                        ui.add_space(10.0);
                         ui.horizontal(|ui| {
-                            ui.add_space(10.0);
-
                             // Left half
                             self.get_new_frame(true, false, ui, depth, used_width);
 
@@ -280,10 +304,7 @@ impl TemplateApp {
 
                             // Right half
                             self.get_new_frame(false, false, ui, depth, used_width);
-
-                            ui.add_space(10.0);
                         });
-                        ui.add_space(10.0);
                     });
             });
     }
@@ -305,6 +326,7 @@ impl TemplateApp {
         };
 
         egui::Frame::none()
+            .inner_margin(egui::Margin::ZERO)
             .stroke(egui::Stroke::new(2.0, egui::Color32::BLACK))
             .rounding(rounding)
             .show(ui, |ui| {
@@ -358,68 +380,79 @@ impl TemplateApp {
                 let next_pos = ui.min_rect().min + egui::vec2(
                     (arm.next().x() + if is_left { 1417.0 } else { -70.0 }) * ui.min_rect().width() / 1347.0,
                     if is_up { -(arm.next().y() - 495.0) * ui.min_rect().height() / 990.0 } else { (arm.next().z() - 1.0) * (ui.min_rect().height() / 680.0) },
-                ) - egui::vec2(15.0, 15.0);
+                );// - egui::vec2(15.0, 15.0);
+                
+                let rect = egui::Rect::from_two_pos(
+                    next_pos - egui::vec2(15.0, 24.0),
+                    next_pos + egui::vec2(15.0, 6.0)
+                );
 
-                let area = egui::Area::new(format!("next_{}_emitter{}", if is_left { "left" } else { "right" }, if is_up { "" } else { "_depth" }))
+                /*let area = egui::Area::new(format!("next_{}_emitter{}", if is_left { "left" } else { "right" }, if is_up { "" } else { "_depth" }))
                     .fixed_pos(next_pos)
                     .movable(true)
                     .constrain_to(ui.min_rect())
-                    .show(ui.ctx(), |ui| {
-                        ui.add(
-                            egui::Image::new(
-                                egui::include_image!("../assets/emitter.png")
-                            )
-                                .max_size(egui::vec2(30.0, 30.0))
-                                .tint(egui::Color32::from_rgba_premultiplied(
-                                    0,
-                                    0,
-                                    0,
-                                    100,
-                                ))
-                                .rotate(
-                                    if is_up {
-                                        if is_left {
-                                            self.left.next().theta() * PI / 180.0 + PI / 2.0
+                    .show(ui.ctx(), |ui| {*/
+                        let area = egui::Image::new(
+                            egui::include_image!("../assets/emitter.png")
+                        )
+                            .max_size(egui::vec2(30.0, 30.0))
+                            .tint(egui::Color32::from_rgba_premultiplied(
+                                0,
+                                0,
+                                0,
+                                100,
+                            ))
+                            .rotate(
+                                if is_up {
+                                    if is_left {
+                                        self.left.next().theta() * PI / 180.0 + PI / 2.0
+                                    } else {
+                                        self.right.next().theta() * PI / 180.0 - PI / 2.0
+                                    }
+                                } else {
+                                    if is_left {
+                                        if self.left.next().theta().abs() < 90.0 {
+                                            PI / 2.0
                                         } else {
-                                            self.right.next().theta() * PI / 180.0 - PI / 2.0
+                                            -PI / 2.0
                                         }
                                     } else {
-                                        if is_left {
-                                            if self.left.next().theta().abs() < 90.0 {
-                                                PI / 2.0
-                                            } else {
-                                                -PI / 2.0
-                                            }
+                                        if self.right.next().theta().abs() < 90.0 {
+                                            -PI / 2.0
                                         } else {
-                                            if self.right.next().theta().abs() < 90.0 {
-                                                -PI / 2.0
-                                            } else {
-                                                PI / 2.0
-                                            }
+                                            PI / 2.0
                                         }
-                                    },
-                                    egui::vec2(0.5, 0.8),
-                                )
-                        );
-                    }).response;
+                                    }
+                                },
+                                egui::vec2(0.5, 0.8),
+                            )
+                            .sense(egui::Sense::drag())
+                            .ui(ui)
+                            .with_new_rect(rect);
+                    //}).response;
 
                 if area.dragged() {
-                    let pix_pos = area.rect.center() - ui.min_rect().min;
-                    arm.set_next(if is_up {
-                        Position::new(
-                            pix_pos.x * 1347.0 / ui.min_rect().width() + if is_left { -1417.0 } else { 70.0 },
-                            -pix_pos.y * 990.0 / ui.min_rect().height() + 495.0,
-                            arm.next().z(),
-                            arm.next().theta(),
-                        )
-                    } else {
-                        Position::new(
-                            pix_pos.x * (1347.0 / ui.min_rect().width()) + if is_left { -1417.0 } else { 70.0 },
-                            arm.next().y(),
-                            pix_pos.y * (680.0 / ui.min_rect().height()),
-                            arm.next().theta(),
-                        )
-                    });
+                    let pix_pos = area.rect.min
+                        + egui::vec2(15.0, 24.0)
+                        - ui.min_rect().min
+                        + area.drag_delta();
+
+                    arm.set_next(
+                        if is_up {
+                            Position::new(
+                                pix_pos.x * 1347.0 / ui.min_rect().width() + if is_left { -1417.0 } else { 70.0 },
+                                -pix_pos.y * 990.0 / ui.min_rect().height() + 495.0,
+                                arm.next().z(),
+                                arm.next().theta(),
+                            )
+                        } else {
+                            Position::new(
+                                pix_pos.x * (1347.0 / ui.min_rect().width()) + if is_left { -1417.0 } else { 70.0 },
+                                arm.next().y(),
+                                pix_pos.y * (680.0 / ui.min_rect().height()),
+                                arm.next().theta(),
+                            )
+                        });
                     if is_left {
                         self.left = arm;
                     } else {
@@ -504,14 +537,14 @@ impl eframe::App for TemplateApp {
 
         egui::SidePanel::left("left")
             .resizable(false)
-            .exact_width(210.0)
+            .exact_width(220.0)
             .show(ctx, |ui|
                 self.side_panel(ui, true),
             );
 
         egui::SidePanel::right("right")
             .resizable(false)
-            .exact_width(210.0)
+            .exact_width(230.0)
             .show(ctx, |ui|
                 self.side_panel(ui, false),
             );
