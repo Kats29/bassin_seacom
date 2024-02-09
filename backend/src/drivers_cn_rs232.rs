@@ -6,7 +6,16 @@ use common::{
     error::HardwareError,
     definitions::DriverType,
 };
-use crate::error_handler::{handle_i2c_creation_error, /*handle_i2c_read_error, handle_i2c_set_slave_error, handle_i2c_write_error,*/ handle_pin_direction_error, handle_pin_export_error, handle_pin_read_error};
+
+use crate::error_handler::{
+    handle_i2c_creation_error,
+    handle_i2c_read_error,
+    handle_i2c_set_slave_error,
+    handle_i2c_write_error,
+    handle_pin_direction_error,
+    handle_pin_export_error,
+    handle_pin_read_error
+};
 
 pub fn get_i2c_addr_value(i2c_type: DriverType) -> u8 {
     return match i2c_type {
@@ -59,7 +68,7 @@ impl Default for DriversCnRs232{
 impl DriversCnRs232{
     pub fn new() -> Result<Self,HardwareError>{
         let mut driver = Self::default();
-
+        driver.i2c_handler = Some(handle_i2c_creation_error("/dev/i2c-2".to_string())?);
         let mut pin = Pin::new(100);
         handle_pin_export_error(pin)?;
         handle_pin_direction_error(pin,Direction::In)?;
@@ -72,39 +81,29 @@ impl DriversCnRs232{
         handle_pin_export_error(pin)?;
         handle_pin_direction_error(pin,Direction::In)?;
 
-
         pin = Pin::new(103);
         handle_pin_export_error(pin)?;
         handle_pin_direction_error(pin,Direction::In)?;
 
-        driver.i2c_handler = None;
         Ok(driver)
     }
 
-    pub fn write_i2c(&self, data: [u8; 9], type_cn : DriverType) -> Result<(),HardwareError>{
+    pub fn write_i2c(&mut self, data: [u8; 9], type_cn : DriverType) -> Result<(),HardwareError>{
         let i2c_addr = get_i2c_addr_value(type_cn);
-        // let iqr_pin = get_iqr_pin(type_cn);
-        println!("set addr slave to :{:#04x}",i2c_addr);
-        //handle_i2c_set_slave_error(self.clone().i2c_handler.unwrap(), i2c_addr as u16,type_cn)?;
+        let iqr_pin = get_iqr_pin(type_cn);
+        handle_i2c_set_slave_error(self.i2c_handler.as_mut().unwrap(), i2c_addr as u16,type_cn)?;
         for n in data.into_iter(){
-            //handle_i2c_write_error(self.clone().i2c_handler.unwrap(),0x00,n,type_cn)?;
-            println!("write the data {:#04x}",n);
-            println!("Wait for the interrupt (mean got a response)");
+            handle_i2c_write_error(self.i2c_handler.as_mut().unwrap(),0x00,n,type_cn)?;
 
-            //while handle_pin_read_error(iqr_pin)? == 1 {}
+            while handle_pin_read_error(iqr_pin)? == 1 {}
 
-            println!("Read the interupt register to clear it");
-            //handle_i2c_read_error(self.clone().i2c_handler.unwrap(), 0x02, type_cn)?;
+            handle_i2c_read_error(self.i2c_handler.as_mut().unwrap(), 0x02, type_cn)?;
 
-            println!("Read the return value");
-            //let g = handle_i2c_read_error(self.clone().i2c_handler.unwrap(), 0x00, type_cn)?;
+            let g = handle_i2c_read_error(self.i2c_handler.as_mut().unwrap(), 0x00, type_cn)?;
 
-            println!("Compare it the value writed");
-            /*if g!=n {
+            if g!=n {
                 return Err(HardwareError::BadI2cResponse(type_cn,g,n));
-            }*/
-
-            println!("right data writed \n\n");
+            }
         }
         Ok(())
     }

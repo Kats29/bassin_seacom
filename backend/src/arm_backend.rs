@@ -96,7 +96,7 @@ impl ArmsBackend {
 
         arms.global_pin_direction()?;
 
-
+        arms.pin_on.set_active_low(true).expect("TODO: panic message");
         //arms.pin_on.set_value(1).expect("Le drivers n'as pas pu être lancé");
 
         Ok(arms)
@@ -128,12 +128,12 @@ impl ArmsBackend {
     }
 
     fn global_pin_direction(&self) -> Result<(), HardwareError> {
-        handle_pin_direction_error(self.pin_on, Direction::Out)?;
-        handle_pin_direction_error(self.pin_ordre_ar_urg, Direction::Out)?;
-        handle_pin_direction_error(self.pin_ar_mom, Direction::Out)?;
+        handle_pin_direction_error(self.pin_on, Direction::High)?;
+        handle_pin_direction_error(self.pin_ordre_ar_urg, Direction::Low)?;
+        handle_pin_direction_error(self.pin_ar_mom, Direction::Low)?;
 
-        handle_pin_direction_error(self.pin_info_etat, Direction::In)?;
-        handle_pin_direction_error(self.pin_info_etat, Direction::In)?;
+        handle_pin_direction_error(self.pin_info_etat, Direction::Low)?;
+        handle_pin_direction_error(self.pin_info_etat, Direction::Low)?;
         handle_pin_direction_error(self.pin_info_ar_urg, Direction::In)?;
         handle_pin_direction_error(self.pin_porte_gauche_bas, Direction::In)?;
         handle_pin_direction_error(self.pin_porte_gauche_haut, Direction::In)?;
@@ -331,7 +331,7 @@ impl ArmsBackend {
         }
     }
 
-    pub fn write_go(&self, driver_type: DriverType, arm_e: Arm, arm_r: Arm) -> Result<(), HardwareError> {
+    pub fn write_go(&mut self, driver_type: DriverType, arm_e: Arm, arm_r: Arm) -> Result<(), HardwareError> {
         match driver_type {
             DriverType::EX => self.driver_rs232.write_i2c(arm_e.next().x_to_bytes(), driver_type),
             DriverType::EY => self.driver_rs232.write_i2c(arm_e.next().y_to_bytes(), driver_type),

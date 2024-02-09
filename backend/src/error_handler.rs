@@ -1,11 +1,21 @@
 use std::fs::File;
+
+use chrono::Local;
+use i2c_linux::I2c;
 use sysfs_gpio::{Direction, Pin};
 
 use common::{
-    error::HardwareError,
     definitions::DriverType,
+    error::HardwareError,
 };
-use i2c_linux::I2c;
+
+use std::io::Write;
+
+use crate::tcp_socket::{
+    STREAM_LOG_ERRORS,
+    STREAM_LOG_IO,
+    STREAM_LOG_TCP,
+};
 
 pub fn handle_pin_read_error(pin: Pin) -> Result<u8, HardwareError> {
     match pin.get_value() {
@@ -16,48 +26,122 @@ pub fn handle_pin_read_error(pin: Pin) -> Result<u8, HardwareError> {
 
 pub fn handle_pin_write_error(pin: Pin, value: u8) -> Result<(), HardwareError> {
     match pin.set_value(value) {
-        Ok(_) => Ok(()),
-        Err(_) => Err(HardwareError::PinWrite(pin.get_pin() as u8))
+        Ok(_) => {
+            Ok(())
+        }
+        Err(_) => {
+            write_error_log(format!("Impossible to set the GPIO_{} to {}", pin.get_pin(), value));
+            Err(HardwareError::PinWrite(pin.get_pin() as u8))
+        }
     }
 }
 
 pub fn handle_pin_export_error(pin: Pin) -> Result<(), HardwareError> {
     match pin.export() {
-        Ok(_) => Ok(()),
-        Err(_) => Err(HardwareError::PinExport(pin.get_pin() as u8))
+        Ok(_) => {
+            write_io_log(format!("GPIO_{} exported", pin.get_pin()));
+            Ok(())
+        }
+        Err(_) => {
+            write_error_log(format!("Could not export the GPIO_{}", pin.get_pin()));
+            Err(HardwareError::PinExport(pin.get_pin() as u8))
+        }
     }
 }
 
 pub fn handle_pin_direction_error(pin: Pin, value: Direction) -> Result<(), HardwareError> {
     match pin.set_direction(value) {
-        Ok(_) => Ok(()),
-        Err(_) => Err(HardwareError::PinDirection(pin.get_pin() as u8))
+        Ok(_) => {
+            write_io_log(format!("GPIO_{} direction set to {}", pin.get_pin(),
+                                 match value {
+                                     Direction::In => "In",
+                                     _ => "Out",
+                                 }
+            ));
+            Ok(())
+        }
+        Err(_) => {
+            write_error_log(format!("Could not set the GPIO_{} direction to {}", pin.get_pin(),
+                                    match value {
+                                        Direction::In => "In",
+                                        _ => "Out",
+                                    }
+            ));
+            Err(HardwareError::PinDirection(pin.get_pin() as u8))
+        }
     }
 }
 
 pub fn handle_i2c_creation_error(file_path: String) -> Result<I2c<File>, HardwareError> {
-    match I2c::from_path(file_path) {
-        Ok(a) => Ok(a),
-        Err(_) => Err(HardwareError::I2cCreation)
+    match I2c::from_path(file_path.clone()) {
+        Ok(a) => {
+            write_io_log(format!("Creation of the i2c at {}", file_path));
+            Ok(a)
+        }
+        Err(_) => {
+            write_error_log(format!("Could not create the i2c at {}", file_path));
+            Err(HardwareError::I2cCreation)
+        }
     }
 }
 
-pub fn handle_i2c_set_slave_error(mut i2c: I2c<File>, i2c_addr: u16, driver: DriverType) -> Result<(), HardwareError> {
+pub fn handle_i2c_set_slave_error(i2c: &mut I2c<File>, i2c_addr: u16, driver_type: DriverType) -> Result<(), HardwareError> {
     match i2c.smbus_set_slave_address(i2c_addr, false) {
-        Ok(_) => Ok(()),
-        Err(_) => Err(HardwareError::I2cSetSlave(i2c_addr, driver))
+        Ok(_) => {
+            write_io_log(format!("Slave address of the {} i2c set to {:#04x}", driver_type,i2c_addr));
+            Ok(())
+        },
+        Err(_) => {
+            write_error_log(format!("Could not set the slave address of the {} i2c to {:#04x}", driver_type,i2c_addr));
+            Err(HardwareError::I2cSetSlave(i2c_addr, driver_type))
+        }
     }
 }
 
-pub fn handle_i2c_write_error(mut i2c: I2c<File>, command: u8, data: u8, driver_type: DriverType) -> Result<(), HardwareError> {
+pub fn handle_i2c_write_error(i2c: &mut I2c<File>, command: u8, data: u8, driver_type: DriverType) -> Result<(), HardwareError> {
     match i2c.smbus_write_byte_data(command, data) {
-        Ok(_) => Ok(()),
-        Err(_) => Err(HardwareError::I2cWrite(driver_type, data))
+        Ok(_) => {
+            write_io_log(format!("Data({:#04x}) write to address({:#04x}) of the {} i2c",data,command, driver_type));
+            Ok(())
+        },
+        Err(_) => {
+            write_error_log(format!("Could not write data({:#04x}) to the address({:#04x}) of the {} i2c",data,command, driver_type));
+            Err(HardwareError::I2cWrite(driver_type, data))
+        }
     }
 }
-pub fn handle_i2c_read_error(mut i2c: I2c<File>, command: u8, driver_type: DriverType) -> Result<u8, HardwareError> {
+
+pub fn handle_i2c_read_error(i2c: &mut I2c<File>, command: u8, driver_type: DriverType) -> Result<u8, HardwareError> {
     match i2c.smbus_read_byte_data(command) {
-        Ok(data) => Ok(data),
-        Err(_) => Err(HardwareError::I2cRead(driver_type, command))
+        Ok(data) => {
+            write_io_log(format!("Data({:#04x}) read from the address({:#04x}) of the {} i2c",data,command, driver_type));
+            Ok(data)
+        },
+        Err(_) => {
+            write_error_log(format!("Could not read dat from the address({:#04x}) of the {} i2c",command, driver_type));
+            Err(HardwareError::I2cRead(driver_type, command))
+        }
     }
+}
+
+pub fn write_error_log(string: String) {
+    write!(STREAM_LOG_ERRORS.lock().unwrap().borrow_mut().as_mut().unwrap(), "{:?} : {}\n", Local::now().to_rfc2822(), string).expect("Write in error.log impossible");
+}
+
+pub fn write_io_log(string: String) {
+    match write!(STREAM_LOG_IO.lock().unwrap().borrow_mut().as_mut().unwrap(), "{:?} : {}\n", Local::now().to_rfc2822(), string) {
+        Ok(_) => {}
+        Err(_) => {
+            write_error_log("Impossible to write in io.log".to_string());
+        }
+    };
+}
+
+pub fn write_tcp_log(string: String) {
+    match write!(STREAM_LOG_TCP.lock().unwrap().borrow_mut().as_mut().unwrap(), "{:?} : {}\n", Local::now().to_rfc2822(), string) {
+        Ok(_) => {}
+        Err(_) => {
+            write_error_log("Impossible to write in tcp.log".to_string());
+        }
+    };
 }

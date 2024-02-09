@@ -1,24 +1,48 @@
-use std::cell::RefCell;
-use std::sync::Mutex;
-use std::time::Duration;
+use std::{
+    cell::RefCell,
+    sync::Mutex,
+    thread::{
+        Builder,
+        sleep,
+    },
+    time::Duration,
+};
+use std::fs::{
+    File,
+    OpenOptions,
+};
+use std::io::ErrorKind;
 
 use serde_json;
-use websocket::{client::sync::Client, OwnedMessage, server::sync::Server, stream::sync::TcpStream};
+use websocket::{
+    client::sync::Client,
+    OwnedMessage,
+    server::sync::Server,
+    stream::sync::TcpStream,
+};
 
 use common::definitions::Command;
 
-use crate::arm_backend::{ArmsBackend, ERR_LIST};
+use crate::arm_backend::{
+    ArmsBackend,
+    ERR_LIST,
+};
+use crate::error_handler::{
+    write_error_log,
+    write_tcp_log,
+};
 
 pub static STREAM: Mutex<RefCell<Option<Client<TcpStream>>>> = Mutex::new(RefCell::new(None));
 pub static DRIVERS: Mutex<RefCell<Option<ArmsBackend>>> = Mutex::new(RefCell::new(None));
-
 pub static MUTEX_UESED: Mutex<RefCell<bool>> = Mutex::new(RefCell::new(false));
+pub static STREAM_LOG_ERRORS: Mutex<RefCell<Option<File>>> = Mutex::new(RefCell::new(None));
+pub static STREAM_LOG_IO: Mutex<RefCell<Option<File>>> = Mutex::new(RefCell::new(None));
+pub static STREAM_LOG_TCP: Mutex<RefCell<Option<File>>> = Mutex::new(RefCell::new(None));
 
-fn handle_client() {
-
-    let join_1 = std::thread::Builder::new().name("read_thread".to_string()).spawn(|| {
+fn handle_client() -> std::io::Result<()> {
+    let _join_1 = match Builder::new().name("update_thread".to_string()).spawn(|| {
         loop {
-            std::thread::sleep(Duration::new(1, 0));
+            sleep(Duration::new(1, 0));
             while match MUTEX_UESED.try_lock() {
                 Ok(used) =>
                     {
@@ -31,25 +55,36 @@ fn handle_client() {
                                     let command: Command;
                                     match serde_json::from_str(msg.as_str()) {
                                         Ok(json) => {
-                                            println!("Data received : \n{:?}", json);
+                                            write_tcp_log(format!("Data({:?}) received in  Thread Update", json));
                                             command = json;
                                             while match DRIVERS.try_lock() {
                                                 Ok(_) => false,
                                                 Err(_) => true
                                             } {};
                                             let update_result = vec![DRIVERS.lock().unwrap().borrow_mut().as_mut().unwrap().update(command)];
-                                            println!(" list d'erreur :{:?}", ERR_LIST.lock().unwrap().borrow());
-                                            let result = serde_json::to_string(&(0u32,if ERR_LIST.lock().unwrap().borrow().is_empty() {
-                                                update_result
-                                            } else {
-                                                ERR_LIST.lock().unwrap().take()
-                                            })).expect("Pb Json");
-                                            println!("le petit json {:?}", result);
-                                            borow_stream.as_mut().unwrap().send_message(&websocket::Message::text(result)).expect("TODO: panic message");
+                                            let result = serde_json::to_string(&(0u32,
+                                                                                 if ERR_LIST.lock().unwrap().borrow().is_empty() {
+                                                                                     update_result
+                                                                                 } else {
+                                                                                     ERR_LIST.lock().unwrap().take()
+                                                                                 })
+                                            ).unwrap();
+                                            while match borow_stream.as_mut().unwrap().send_message(&websocket::Message::text(result.clone())) {
+                                                Ok(_) => {
+                                                    write_tcp_log(format!("Data({:?}) send from Thread Update", result));
+                                                    false
+                                                }
+                                                Err(_) => {
+                                                    write_error_log(format!("Could not send data({:?}) from Thread Update", result));
+                                                    true
+                                                }
+                                            }{
+                                                sleep(Duration::new(0,500_000_000));
+                                            }
                                             *ERR_LIST.lock().unwrap().borrow_mut() = vec![];
                                         }
                                         Err(_) => {
-                                            println!("Unrecognizable data : {}", msg);
+                                            write_error_log(format!("Unrecognizable data({}) received in Thread Update", msg));
                                         }
                                     }
                                 }
@@ -64,10 +99,16 @@ fn handle_client() {
                 }
             } {};
         }
-    });
-    let join_2 = std::thread::Builder::new().name("check_theard".to_string()).spawn(|| {
+    }) {
+        Ok(jh) => jh,
+        Err(e) => {
+            write_error_log("Could not create the update thread".to_string());
+            return Err(e);
+        }
+    };
+    let _join_2 = match Builder::new().name("check_theard".to_string()).spawn(|| {
         loop {
-            std::thread::sleep(Duration::new(5, 0));
+            sleep(Duration::new(5, 0));
             while match MUTEX_UESED.try_lock() {
                 Ok(used) =>
                     {
@@ -75,20 +116,24 @@ fn handle_client() {
                             used.replace(true);
                             while match DRIVERS.try_lock() {
                                 Ok(driv) => {
-                                    println!("thread 2 pas finito pipo");
                                     let check = (1u32, driv.borrow().as_ref().unwrap().check_status());
-                                    let result = serde_json::to_string(&check).expect("Pb Json");
-                                    println!("Data a envoyer:  json {},vec : {:?}",result,check);
+                                    let result = serde_json::to_string(&check).unwrap();
                                     while match STREAM.try_lock() {
                                         Ok(stream) => {
-                                            match stream.borrow_mut().as_mut().unwrap().send_message(&websocket::Message::text(result.clone())) {
+                                            while match stream.borrow_mut().as_mut().unwrap().send_message(&websocket::Message::text(result.clone())) {
                                                 Ok(_) => {
-                                                    println!("Data envoyé dans le thread 2{}",result.clone());
+                                                    write_tcp_log(format!("Data({:?}) send from Thread Check", result));
+                                                    false
                                                 }
-                                                Err(_) => {}
+                                                Err(_) => {
+                                                    write_error_log(format!("Could not send data({:?}) from Thread Update", result));
+                                                    true
+                                                }
+                                            }{
+                                                sleep(Duration::new(0,500_000_000));
                                             }
                                             false
-                                        },
+                                        }
                                         Err(_) => true
                                     } {};
 
@@ -106,7 +151,13 @@ fn handle_client() {
                 }
             } {};
         }
-    }).expect("TODO: panic message");
+    }) {
+        Ok(jh) => jh,
+        Err(e) => {
+            write_error_log("Could not create the check thread".to_string());
+            return Err(e);
+        }
+    };
     /*loop {
         match stream.recv_message() {
             Ok(OwnedMessage::Text(msg)) => {
@@ -154,32 +205,73 @@ fn handle_client() {
     //         break;
     //     }
     // }
+    Ok(())
 }
 
 pub fn tcp_listen() -> std::io::Result<()> {
+    STREAM_LOG_ERRORS.lock().unwrap().replace(
+        Some(OpenOptions::new().append(true).create(true).open("error.log").expect("Erreur ouverture fichier error.log"))
+    );
+
+    STREAM_LOG_TCP.lock().unwrap().replace(
+        match OpenOptions::new().append(true).create(true).open("tcp.log") {
+            Ok(f) => Some(f),
+            Err(e) => {
+                write_error_log("Could not open tcp.log".to_string());
+                return Err(e);
+            }
+        }
+    );
+
+
+    STREAM_LOG_IO.lock().unwrap().replace(
+        match OpenOptions::new().append(true).create(true).open("io.log") {
+            Ok(f) => Some(f),
+            Err(e) => {
+                write_error_log("Could not open io.log".to_string());
+                return Err(e);
+            }
+        }
+    );
+
     let mut listener = Server::bind("0.0.0.0:3333")?;
-    let arm = ArmsBackend::new().expect("Problème de démmarage (arm_back pas construit");
+
+    let arm =
+        match ArmsBackend::new() {
+            Ok(ab) => ab,
+            Err(he) => {
+                write_error_log("Could not create ArmsBackend".to_string());
+                return Err(std::io::Error::new(ErrorKind::Interrupted, he));
+            }
+        };
     DRIVERS.lock().unwrap().replace(Some(arm));
 
     // accept connections and process them, spawning a new thread for each one
-    println!("Server listening on port 3333");
+    write_tcp_log("Server listening on port 3333".to_string());
 
     while match listener.accept() {
         Ok(upgrade) => {
             let _ = STREAM.lock().unwrap().replace(Some(upgrade.accept().unwrap()));
-            STREAM.lock().unwrap().borrow_mut().as_mut().unwrap().set_nonblocking(true).expect("Pb a non blocking");
-            println!("New connection: {}", STREAM.lock().unwrap().borrow().as_ref().unwrap().peer_addr().unwrap());
-            handle_client();
+
+            match STREAM.lock().unwrap().borrow_mut().as_mut().unwrap().set_nonblocking(true) {
+                Ok(_) => {}
+                Err(e) => {
+                    write_error_log("Could not set the tcp stream to non blocking".to_string());
+                    return Err(e);
+                }
+            };
+            write_tcp_log(format!("New connection: {}", STREAM.lock().unwrap().borrow().as_ref().unwrap().peer_addr().unwrap()));
+            handle_client()?;
             true
         }
         Err(_) => {
-            println!("Connection failed");
+            write_tcp_log("New connection failed".to_string());
             false
         }
     } {}
 
     // close the socket server
     drop(listener);
-    println!("TCP connection closed");
+    write_tcp_log("TCP connection closed".to_string());
     Ok(())
 }
