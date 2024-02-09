@@ -17,6 +17,7 @@ use std::{
 use egui_modal::Modal;
 use std::ops::Deref;
 use std::sync::Mutex;
+use std::cell::RefCell;
 use egui::{
     Ui,
     Widget
@@ -28,11 +29,13 @@ use common::{
         Arm,
         Command,
         DriverType,
+        Status
     },
     error::HardwareError
 };
 
 pub static ERR_LIST: Mutex<Vec<HardwareError>> = Mutex::new(vec![]);
+pub static STATUS: Mutex<RefCell<Option<Status>>> = Mutex::new(RefCell::new(None));
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(Deserialize, Serialize)]
@@ -43,7 +46,7 @@ pub struct TemplateApp {
 
     #[serde(skip)]
     stream: EventClient,
-
+    #[serde(skip)]
     movment_pending: [bool;8],
 }
 
@@ -54,7 +57,7 @@ impl Default for TemplateApp {
         left_arm.set_next(left_arm.position());
         let mut right_arm = Arm::new(false);
         right_arm.set_next(right_arm.position());
-        let client = Self::connect("ws://beaglebone.local:3333");
+        let client = Self::connect("ws://bassin.local:3333");
         Self {
             left: left_arm,
             right: right_arm,
@@ -105,29 +108,28 @@ impl TemplateApp {
                     Message::Text(string) => string,
                     _ => "".to_string(),
                 };
-                let obj: (u32, Vec<Result<(), HardwareError>>) = serde_json::from_str(mess.as_str()).expect("Un pb dans la lecture du JSON FrontEnd");
 
                 let mut errors_string = "".to_string();
 
-                match obj.0 {
-                    0 => {
-                        for i in obj.1 {
-                            match i {
-                                Ok(_) => {
-                                    info!("Aucun problème rencontré");
-                                }
-                                Err(e) => {
-                                    ERR_LIST.lock().unwrap().push(e);
-                                    errors_string += format!("\n{}", e).as_str();
-                                    info!("{}", e);
-                                }
+                if let Ok(err) = serde_json::from_str::<Vec<Result<(), HardwareError>>>(mess.as_str()) {
+                    for i in err {
+                        match i {
+                            Ok(_) => {
+                                info!("Aucun problème rencontré");
+                            }
+                            Err(e) => {
+                                ERR_LIST.lock().unwrap().push(e);
+                                errors_string += format!("\n{}", e).as_str();
+                                info!("{}", e);
                             }
                         }
-                    },
-                    1 => {
-                        // TODO
-                    },
-                    _ => ()
+                    }
+                }
+                else if let Ok(status) = serde_json::from_str::<Status>(mess.as_str()) {
+                    STATUS.lock().unwrap().replace(Some(status));
+                }
+                else {
+                    error!("JSON conversion error");
                 }
             })));
 
@@ -214,7 +216,43 @@ impl TemplateApp {
                     true => self.left.set_next(next),
                     false => self.right.set_next(next)
                 }
-            },
+            }
+        );
+        ui.separator();
+        ui.vertical_centered(|ui| {
+            ui.heading(match is_emitter {
+                true => "État bras émetteur",
+                false => "État bras récepteur"
+            });
+        });
+        ui.separator();
+        ui.with_layout(
+            egui::Layout::top_down(egui::Align::Max),
+            |ui| {
+                ui.horizontal(|ui| {
+                    if !is_emitter {
+                        ui.add_space(20.0);
+                    }
+                    let (_, rect) = ui.allocate_space(egui::vec2(10.0, 10.0));
+                    ui.painter().circle_filled(
+                        rect.min + egui::vec2(5.0, 5.0),
+                        5.0,
+                        match STATUS.lock().unwrap().take() {
+                            Some(status) => {
+                                let color = if status.movement_ex() || self.movment_pending[0] {
+                                    egui::Color32::RED
+                                } else {
+                                    egui::Color32::GREEN
+                                };
+                                STATUS.lock().unwrap().replace(Some(status));
+                                color
+                            },
+                            None => egui::Color32::GRAY
+                        }
+                    );
+                    ui.label("X émetteur :");
+                });
+            }
         );
     }
 
