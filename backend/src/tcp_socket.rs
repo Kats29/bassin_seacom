@@ -62,12 +62,12 @@ fn handle_client() -> std::io::Result<()> {
                                                 Err(_) => true
                                             } {};
                                             let update_result = vec![DRIVERS.lock().unwrap().borrow_mut().as_mut().unwrap().update(command)];
-                                            let result = serde_json::to_string(&(0u32,
-                                                                                 if ERR_LIST.lock().unwrap().borrow().is_empty() {
-                                                                                     update_result
-                                                                                 } else {
-                                                                                     ERR_LIST.lock().unwrap().take()
-                                                                                 })
+                                            let result = serde_json::to_string(&
+                                                if ERR_LIST.lock().unwrap().borrow().is_empty() {
+                                                    update_result
+                                                } else {
+                                                    ERR_LIST.lock().unwrap().take()
+                                                }
                                             ).unwrap();
                                             while match borow_stream.as_mut().unwrap().send_message(&websocket::Message::text(result.clone())) {
                                                 Ok(_) => {
@@ -78,8 +78,8 @@ fn handle_client() -> std::io::Result<()> {
                                                     write_error_log(format!("Could not send data({:?}) from Thread Update", result));
                                                     true
                                                 }
-                                            }{
-                                                sleep(Duration::new(0,500_000_000));
+                                            } {
+                                                sleep(Duration::new(0, 500_000_000));
                                             }
                                             *ERR_LIST.lock().unwrap().borrow_mut() = vec![];
                                         }
@@ -116,7 +116,7 @@ fn handle_client() -> std::io::Result<()> {
                             used.replace(true);
                             while match DRIVERS.try_lock() {
                                 Ok(driv) => {
-                                    let check = (1u32, driv.borrow().as_ref().unwrap().check_status());
+                                    let check = driv.borrow().as_ref().unwrap().check_status();
                                     let result = serde_json::to_string(&check).unwrap();
                                     while match STREAM.try_lock() {
                                         Ok(stream) => {
@@ -129,8 +129,8 @@ fn handle_client() -> std::io::Result<()> {
                                                     write_error_log(format!("Could not send data({:?}) from Thread Update", result));
                                                     true
                                                 }
-                                            }{
-                                                sleep(Duration::new(0,500_000_000));
+                                            } {
+                                                sleep(Duration::new(0, 500_000_000));
                                             }
                                             false
                                         }

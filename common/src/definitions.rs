@@ -1,12 +1,13 @@
 use std::fmt::{Display, Formatter};
 
-#[derive(serde::Deserialize, serde::Serialize,Copy, Clone,Debug)]
-pub enum Doors{
+#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
+pub enum Doors {
     GaucheBas,
     GaucheHaut,
     DroiteBas,
-    DroiteHaut
+    DroiteHaut,
 }
+
 impl Display for Doors {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let s = match self {
@@ -15,7 +16,7 @@ impl Display for Doors {
             Doors::DroiteBas => "Porte Droite Bas",
             Doors::DroiteHaut => "Porte Droite Haut",
         };
-        write!(f,"{}",s)
+        write!(f, "{}", s)
     }
 }
 
@@ -33,6 +34,7 @@ pub enum DriverType {
     E,
     ALL,
 }
+
 impl Display for DriverType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let s = match self {
@@ -48,13 +50,13 @@ impl Display for DriverType {
             DriverType::R => "Drivers pour les moteur récepteur",
             DriverType::ALL => "Drivers pour tous les moteurs"
         };
-        write!(f,"{}",s)
+        write!(f, "{}", s)
     }
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
-pub enum Command{
-    Go(DriverType,Arm,Arm),
+pub enum Command {
+    Go(DriverType, Arm, Arm),
     Reset(DriverType),
     Zero(DriverType),
     ArrUrg,
@@ -62,7 +64,7 @@ pub enum Command{
     ArrMom,
     StopArrMom,
     Start,
-    Stop
+    Stop,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
@@ -118,36 +120,36 @@ impl Position {
         self.theta = value;
     }
 
-    pub fn x_to_bytes(self) -> [u8;9]{
+    pub fn x_to_bytes(self) -> [u8; 9] {
         let x = ((-6025.0 * self.x().abs()) as isize + 8539473) as usize;
-        let mut bytes: [u8;9] = [0x08,0x51,0x00,0x01,0x00, 0x00, 0x00, 0x87, 0xff];
+        let mut bytes: [u8; 9] = [0x08, 0x51, 0x00, 0x01, 0x00, 0x00, 0x00, 0x87, 0xff];
         bytes[4] = (x >> 16) as u8;
         bytes[5] = (x >> 8) as u8;
         bytes[6] = (x & 0xff) as u8;
         return bytes;
     }
 
-    pub fn y_to_bytes(self) -> [u8;9]{
+    pub fn y_to_bytes(self) -> [u8; 9] {
         let y = ((-6025.0 * self.y()) as isize + 2984423) as usize;
-        let mut bytes: [u8;9] = [0x08,0x51,0x00,0x01,0x00, 0x00, 0x00, 0x87, 0xff];
+        let mut bytes: [u8; 9] = [0x08, 0x51, 0x00, 0x01, 0x00, 0x00, 0x00, 0x87, 0xff];
         bytes[4] = (y >> 16) as u8;
         bytes[5] = (y >> 8) as u8;
         bytes[6] = (y & 0xff) as u8;
         return bytes;
     }
 
-    pub fn z_to_bytes(self) -> [u8;9]{
+    pub fn z_to_bytes(self) -> [u8; 9] {
         let z = ((6025.0 * self.z) as isize + 2048) as usize;
-        let mut bytes: [u8;9] = [0x08,0x51,0x00,0x01,0x00, 0x00, 0x00, 0x87, 0xff];
+        let mut bytes: [u8; 9] = [0x08, 0x51, 0x00, 0x01, 0x00, 0x00, 0x00, 0x87, 0xff];
         bytes[4] = (z >> 16) as u8;
         bytes[5] = (z >> 8) as u8;
         bytes[6] = (z & 0xff) as u8;
         return bytes;
     }
 
-    pub fn theta_to_bytes(self) -> [u8;9]{
+    pub fn theta_to_bytes(self) -> [u8; 9] {
         let theta = ((5000.0 * self.theta / 9.0) as isize + 8388608) as usize;
-        let mut bytes: [u8;9] = [0x08,0x51,0x00,0x01,0x00, 0x00, 0x00, 0x87, 0xff];
+        let mut bytes: [u8; 9] = [0x08, 0x51, 0x00, 0x01, 0x00, 0x00, 0x00, 0x87, 0xff];
         bytes[4] = (theta >> 16) as u8;
         bytes[5] = (theta >> 8) as u8;
         bytes[6] = (theta & 0xff) as u8;
@@ -155,7 +157,7 @@ impl Position {
     }
 
     pub fn to_bytes(self) -> [[u8; 9]; 4] {
-        return [self.x_to_bytes(),self.y_to_bytes(),self.z_to_bytes(),self.theta_to_bytes()];
+        return [self.x_to_bytes(), self.y_to_bytes(), self.z_to_bytes(), self.theta_to_bytes()];
     }
 }
 
@@ -215,5 +217,112 @@ impl Arm {
 
     pub fn is_emitter(self) -> bool {
         return self.is_emitter;
+    }
+}
+#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
+#[serde(default)]
+pub struct Status {
+    door_right_open: bool,
+    door_left_open: bool,
+    bassin_powered: bool,
+    bassin_started: bool,
+    arr_urg: bool,
+    arr_mom: bool,
+    movement_ex: bool,
+    movement_ey: bool,
+    movement_ez: bool,
+    movement_et: bool,
+    movement_rx: bool,
+    movement_ry: bool,
+    movement_rz: bool,
+    movement_rt: bool,
+}
+
+impl Default for Status {
+    fn default() -> Self {
+        Self {
+            door_right_open: true,
+            door_left_open: true,
+            bassin_powered: false,
+            bassin_started: false,
+            arr_urg: false,
+            arr_mom: false,
+            movement_ex: false,
+            movement_ey: false,
+            movement_ez: false,
+            movement_et: false,
+            movement_rx: false,
+            movement_ry: false,
+            movement_rz: false,
+            movement_rt: false,
+        }
+    }
+}
+
+
+impl Status {
+    pub fn new(door_right_open: bool, door_left_open: bool, bassin_powered: bool, bassin_started: bool, arr_urg: bool,
+               arr_mom: bool, movement_ex: bool, movement_ey: bool, movement_ez: bool, movement_et: bool,
+               movement_rx: bool, movement_ry: bool, movement_rz: bool, movement_rt: bool,
+    ) -> Self {
+        Self {
+            door_right_open,
+            door_left_open,
+            bassin_powered,
+            bassin_started,
+            arr_urg,
+            arr_mom,
+            movement_ex,
+            movement_ey,
+            movement_ez,
+            movement_et,
+            movement_rx,
+            movement_ry,
+            movement_rz,
+            movement_rt,
+        }
+    }
+
+    pub fn door_right_open(self) -> bool {
+        self.door_right_open
+    }
+    pub fn door_left_open(self) -> bool {
+        self.door_left_open
+    }
+    pub fn bassin_powered(self) -> bool {
+        self.bassin_powered
+    }
+    pub fn bassin_started(self) -> bool {
+        self.bassin_started
+    }
+    pub fn arr_urg(self) -> bool {
+        self.arr_urg
+    }
+    pub fn arr_mom(self) -> bool {
+        self.arr_mom
+    }
+    pub fn movement_ex(self) -> bool {
+        self.movement_ex
+    }
+    pub fn movement_ey(self) -> bool {
+        self.movement_ey
+    }
+    pub fn movement_ez(self) -> bool {
+        self.movement_ez
+    }
+    pub fn movement_et(self) -> bool {
+        self.movement_et
+    }
+    pub fn movement_rx(self) -> bool {
+        self.movement_rx
+    }
+    pub fn movement_ry(self) -> bool {
+        self.movement_ry
+    }
+    pub fn movement_rz(self) -> bool {
+        self.movement_rz
+    }
+    pub fn movement_rt(self) -> bool {
+        self.movement_rt
     }
 }

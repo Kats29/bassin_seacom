@@ -11,13 +11,14 @@ use common::{
         Command,
         Doors,
         DriverType,
+        Status,
     },
     error::HardwareError,
 };
 
 use crate::driver_cn_pin::DriverCnPin;
 use crate::drivers_cn_rs232::DriversCnRs232;
-use crate::error_handler::{handle_pin_direction_error, handle_pin_export_error, handle_pin_read_error, handle_pin_write_error};
+use crate::error_handler::{handle_pin_direction_error, handle_pin_export_error, handle_pin_read_error, handle_pin_write_error, write_error_log, write_io_log};
 
 pub static ERR_LIST: Mutex<RefCell<Vec<Result<(), HardwareError>>>> = Mutex::new(RefCell::new(vec![]));
 
@@ -96,8 +97,16 @@ impl ArmsBackend {
 
         arms.global_pin_direction()?;
 
-        arms.pin_on.set_active_low(true).expect("TODO: panic message");
-        //arms.pin_on.set_value(1).expect("Le drivers n'as pas pu être lancé");
+        match arms.pin_on.set_active_low(true) {
+            Ok(_) => {
+                write_io_log(format!("GPIO_{} is set active at low", arms.pin_on.get_pin()));
+                Ok(())
+            }
+            Err(_) => {
+                write_error_log(format!("Unable to set GPIO_{} active at low", arms.pin_on.get_pin()));
+                Err(HardwareError::UnknownError)
+            }
+        }?;
 
         Ok(arms)
     }
@@ -140,165 +149,262 @@ impl ArmsBackend {
         handle_pin_direction_error(self.pin_porte_droite_bas, Direction::In)
     }
 
-    pub fn check_status(&self) -> Vec<Result<(), HardwareError>> {
-        let mut vec_error = vec![];
-        match handle_pin_read_error(self.pin_ar_mom) {
-            Ok(result) => {
-                if result == 1 {
-                    vec_error.push(Err(HardwareError::ArrMom));
-                }
-            }
-            Err(e) => {
-                vec_error.push(Err(e));
-            }
-        }
-
-        match handle_pin_read_error(self.pin_info_ar_urg) {
-            Ok(result) => {
-                if result == 1 {
-                    vec_error.push(Err(HardwareError::ArrUrg));
-                }
-            }
-            Err(e) => {
-                vec_error.push(Err(e));
-            }
-        }
-
-        match handle_pin_read_error(self.pin_info_etat) {
-            Ok(result) => {
-                if result == 0 {
-                    match handle_pin_read_error(self.pin_on) {
-                        Ok(result_2) => {
-                            if result_2 == 1 {
-                                vec_error.push(Err(HardwareError::NotStarted));
-
-                            }else {
-                                vec_error.push(Err(HardwareError::NotPowered));
-                            }
-                        }
-                        Err(e) => {
-                            vec_error.push(Err(e));
-                        }
+    pub fn check_status(&self) -> Status {
+        let tmp = ERR_LIST.lock().unwrap();
+        let mut vec_error = tmp.borrow_mut();
+        let status = Status::new(
+            match handle_pin_read_error(self.pin_porte_droite_bas) {
+                Ok(result) => {
+                    if result == 0 {
+                        vec_error.push(Err(HardwareError::OpenDoor(Doors::DroiteBas)));
+                        true
+                    } else {
+                        false
                     }
                 }
-            }
-            Err(e) => {
-                vec_error.push(Err(e));
-            }
-        }
+                Err(e) => {
+                    vec_error.push(Err(e));
+                    true
+                }
+            } || match handle_pin_read_error(self.pin_porte_droite_haut) {
+                Ok(result) => {
+                    if result == 0 {
+                        vec_error.push(Err(HardwareError::OpenDoor(Doors::DroiteHaut)));
+                        true
+                    } else {
+                        false
+                    }
+                }
+                Err(e) => {
+                    vec_error.push(Err(e));
+                    true
+                }
+            },
 
-        match handle_pin_read_error(self.pin_porte_gauche_bas) {
-            Ok(result) => {
-                if result == 0 {
-                    vec_error.push(Err(HardwareError::OpenDoor(Doors::GaucheBas)));
+            match handle_pin_read_error(self.pin_porte_gauche_bas) {
+                Ok(result) => {
+                    if result == 0 {
+                        vec_error.push(Err(HardwareError::OpenDoor(Doors::GaucheBas)));
+                        true
+                    }
+                    else{
+                        false
+                    }
+                }
+                Err(e) => {
+                    vec_error.push(Err(e));
+                    true
+                }
+            } ||
+            match handle_pin_read_error(self.pin_porte_gauche_haut) {
+                Ok(result) => {
+                    if result == 0 {
+                        vec_error.push(Err(HardwareError::OpenDoor(Doors::GaucheBas)));
+                        true
+                    }
+                    else{
+                        false
+                    }
+                }
+                Err(e) => {
+                    vec_error.push(Err(e));
+                    true
                 }
             }
-            Err(e) => {
-                vec_error.push(Err(e));
-            }
-        }
-        match handle_pin_read_error(self.pin_porte_gauche_haut) {
-            Ok(result) => {
-                if result == 0 {
-                    vec_error.push(Err(HardwareError::OpenDoor(Doors::GaucheBas)));
+            ,
+            match handle_pin_read_error(self.pin_info_etat) {
+                Ok(result) => {
+                    if result == 0 {
+                        vec_error.push(Err(HardwareError::NotStarted));
+                        false
+                    } else {
+                        true
+                    }
+                }
+                Err(e) => {
+                    vec_error.push(Err(e));
+                    false
+                }
+            },
+            match handle_pin_read_error(self.pin_on) {
+                Ok(result_2) => {
+                    if result_2 == 1 {
+                        true
+                    } else {
+                        vec_error.push(Err(HardwareError::NotPowered));
+                        false
+                    }
+                }
+                Err(e) => {
+                    vec_error.push(Err(e));
+                    false
                 }
             }
-            Err(e) => {
-                vec_error.push(Err(e));
-            }
-        }
-        match handle_pin_read_error(self.pin_porte_droite_bas) {
-            Ok(result) => {
-                if result == 0 {
-                    vec_error.push(Err(HardwareError::OpenDoor(Doors::DroiteBas)));
+            ,
+            match handle_pin_read_error(self.pin_info_ar_urg) {
+                Ok(result) => {
+                    if result == 1 {
+                        vec_error.push(Err(HardwareError::ArrUrg));
+                        true
+                    } else {
+                        false
+                    }
                 }
-            }
-            Err(e) => {
-                vec_error.push(Err(e));
-            }
-        }
-        match handle_pin_read_error(self.pin_porte_droite_haut) {
-            Ok(result) => {
-                if result == 0 {
-                    vec_error.push(Err(HardwareError::OpenDoor(Doors::DroiteHaut)));
+                Err(e) => {
+                    vec_error.push(Err(e));
+                    false
                 }
-            }
-            Err(e) => {
-                vec_error.push(Err(e));
-            }
-        }
+            },
+            match handle_pin_read_error(self.pin_ar_mom) {
+                Ok(result) => {
+                    if result == 1 {
+                        vec_error.push(Err(HardwareError::ArrMom));
+                        true
+                    } else {
+                        false
+                    }
+                }
+                Err(e) => {
+                    vec_error.push(Err(e));
+                    false
+                }
+            },
 
-        vec_error.append(self.movement_finished().as_mut());
+            match self.driver_x_emetteur.movement_finished() {
+                Ok(_) => {
+                    true
+                }
+                Err(e) => {
+                    vec_error.push(Err(e));
+                    false
+                }
+            },
 
-        if vec_error.is_empty(){
-            vec_error.push(Ok(()));
-        }
+            match self.driver_y_emetteur.movement_finished() {
+                Ok(_) => {
+                    true
+                }
+                Err(e) => {
+                    vec_error.push(Err(e));
+                    false
+                }
+            },
+            match self.driver_z_emetteur.movement_finished() {
+                Ok(_) => {
+                    true
+                }
+                Err(e) => {
+                    vec_error.push(Err(e));
+                    false
+                }
+            },
 
-        return vec_error;
+            match self.driver_t_emetteur.movement_finished() {
+                Ok(_) => {
+                    true
+                }
+                Err(e) => {
+                    vec_error.push(Err(e));
+                    false
+                }
+            },
+
+            match self.driver_x_recepteur.movement_finished() {
+                Ok(_) => {
+                    true
+                }
+                Err(e) => {
+                    vec_error.push(Err(e));
+                    false
+                }
+            },
+            match self.driver_y_recepteur.movement_finished() {
+                Ok(_) => {
+                    true
+                }
+                Err(e) => {
+                    vec_error.push(Err(e));
+                    false
+                }
+            },
+            match self.driver_z_recepteur.movement_finished() {
+                Ok(_) => {
+                    true
+                }
+                Err(e) => {
+                    vec_error.push(Err(e));
+                    false
+                }
+            },
+            match self.driver_t_recepteur.movement_finished() {
+                Ok(_) => {
+                    true
+                }
+                Err(e) => {
+                    vec_error.push(Err(e));
+                    false
+                }
+            },
+        );
+
+
+        return status;
     }
 
-    fn movement_finished(&self) -> Vec<Result<(),HardwareError>> {
+    fn movement_finished(&self) -> Vec<Result<(), HardwareError>> {
         let mut error = vec![];
 
         match self.driver_x_emetteur.movement_finished() {
-            Ok(_) => {
-            }
+            Ok(_) => {}
             Err(e) => {
                 error.push(Err(e));
             }
         }
 
         match self.driver_y_emetteur.movement_finished() {
-            Ok(_) => {
-            }
+            Ok(_) => {}
             Err(e) => {
                 error.push(Err(e));
             }
         }
 
         match self.driver_z_emetteur.movement_finished() {
-            Ok(_) => {
-            }
+            Ok(_) => {}
             Err(e) => {
                 error.push(Err(e));
             }
         }
 
         match self.driver_t_emetteur.movement_finished() {
-            Ok(_) => {
-            }
+            Ok(_) => {}
             Err(e) => {
                 error.push(Err(e));
             }
         }
 
         match self.driver_x_recepteur.movement_finished() {
-            Ok(_) => {
-            }
+            Ok(_) => {}
             Err(e) => {
                 error.push(Err(e));
             }
         }
 
         match self.driver_y_recepteur.movement_finished() {
-            Ok(_) => {
-            }
+            Ok(_) => {}
             Err(e) => {
                 error.push(Err(e));
             }
         }
 
         match self.driver_z_recepteur.movement_finished() {
-            Ok(_) => {
-            }
+            Ok(_) => {}
             Err(e) => {
                 error.push(Err(e));
             }
         }
 
         match self.driver_t_recepteur.movement_finished() {
-            Ok(_) => {
-            }
+            Ok(_) => {}
             Err(e) => {
                 error.push(Err(e));
             }
@@ -309,7 +415,7 @@ impl ArmsBackend {
 
     pub fn update(&mut self, command: Command) -> Result<(), HardwareError> {
         println!("nouvelle commande");
-        // self.check_status()?;
+        self.check_status();
 
         match command {
             Command::Go(dt, arm_e, arm_r) => {
