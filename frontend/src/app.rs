@@ -206,7 +206,7 @@ impl TemplateApp {
                         -180.0..=180.0,
                     ).suffix("°")
                     );
-                    ui.label("Théta :");
+                    ui.label("θ :");
                     next.set_theta(val);
                 });
 
@@ -220,8 +220,8 @@ impl TemplateApp {
 
     /// Defines the look of the main visual part of the UI
     pub fn main_view(&mut self, ui: &mut egui::Ui,ctx : &egui::Context) {
-        let width = (ui.available_width() / 2.0 - 20.0)
-            .min((ui.available_height() / 2.0 - 10.0) * 1417.0 / 990.0);
+        let width = (ui.available_width() / 2.0 - 10.0)
+            .min((ui.available_height() - 220.0) * 0.85);
         let used_width = width * (1.0 - 70.0 / 1417.0);
         let height = width * 990.0 / 1417.0;
 
@@ -261,7 +261,7 @@ impl TemplateApp {
                     .inner_margin(egui::Margin::same(10.0))
                     .outer_margin({
                         let mut margin = egui::Margin::ZERO;
-                        margin.left = ui.available_width() / 2.0 - width - 10.0;
+                        margin.left = (ui.available_width() / 2.0 - width - 10.0) / 1.4;
                         margin
                     })
                     .fill(egui::Color32::LIGHT_BLUE)
@@ -272,7 +272,7 @@ impl TemplateApp {
 
                             self.get_new_frame(true, true, ui, height, used_width);
 
-                            ui.add_space(width * 140.0 / 1417.0);
+                            ui.add_space(width * 140.0 / 1417.0 - 5.0);
 
                             // Right half
                             self.get_new_frame(false, true, ui, height, used_width);
@@ -290,7 +290,7 @@ impl TemplateApp {
                     .inner_margin(egui::Margin::same(10.0))
                     .outer_margin({
                         let mut margin = egui::Margin::ZERO;
-                        margin.left = ui.available_width() / 2.0 - width - 10.0;
+                        margin.left = (ui.available_width() / 2.0 - width - 10.0) / 1.4;
                         margin
                     })
                     .fill(egui::Color32::LIGHT_BLUE)
@@ -300,7 +300,7 @@ impl TemplateApp {
                             // Left half
                             self.get_new_frame(true, false, ui, depth, used_width);
 
-                            ui.add_space(width * 140.0 / 1417.0);
+                            ui.add_space(width * 140.0 / 1417.0 - 5.0);
 
                             // Right half
                             self.get_new_frame(false, false, ui, depth, used_width);
@@ -330,126 +330,146 @@ impl TemplateApp {
             .stroke(egui::Stroke::new(2.0, egui::Color32::BLACK))
             .rounding(rounding)
             .show(ui, |ui| {
-                ui.set_width(width);
-                ui.set_height(height);
+                ui.set_width(width + 30.0);
+                ui.set_height(height + 50.0);
 
                 // Current position
-                let pos = ui.min_rect().min + egui::vec2(
-                    (arm.position().x() + if is_left { 1417.0 } else { -70.0 }) * ui.min_rect().width() / 1347.0,
-                    if is_up { -(arm.position().y() - 495.0) * ui.min_rect().height() / 990.0 } else { (arm.position().z() - 1.0) * (ui.min_rect().height() / 680.0) },
-                ) - egui::vec2(15.0, 15.0);
+                let pos = ui.min_rect().min + egui::vec2(if is_left { 25.0 } else { 5.0 }, 25.0) + egui::vec2(
+                    (arm.position().x() + if is_left { 1417.0 } else { -70.0 }) * width / 1347.0,
+                    if is_up { 
+                        -(arm.position().y() - 495.0) * height / 990.0 
+                    } else { 
+                        (arm.position().z() - 1.0) * (height / 680.0) 
+                    }
+                );
 
+                let rect = egui::Rect::from_two_pos(
+                    pos - egui::vec2(15.0, 24.0),
+                    pos + egui::vec2(15.0, 6.0)
+                );
 
-                egui::Area::new(format!("current_{}_emitter{}", if is_left { "left" } else { "right" }, if is_up { "" } else { "_depth" }))
-                    .fixed_pos(pos)
-                    .constrain_to(ui.min_rect())
-                    .show(ui.ctx(), |ui| {
-                        ui.add(
-                            egui::Image::new(
-                                egui::include_image!("../assets/emitter.png")
-                            )
-                                .max_size(egui::vec2(30.0, 30.0))
-                                .rotate(
-                                    if is_up {
-                                        if is_left {
-                                            self.left.position().theta() * PI / 180.0 + PI / 2.0
-                                        } else {
-                                            self.right.position().theta() * PI / 180.0 - PI / 2.0
-                                        }
-                                    } else {
-                                        if is_left {
-                                            if self.left.position().theta().abs() < 90.0 {
-                                                PI / 2.0
-                                            } else {
-                                                -PI / 2.0
-                                            }
-                                        } else {
-                                            if arm.position().theta().abs() < 90.0 {
-                                                -PI / 2.0
-                                            } else {
-                                                PI / 2.0
-                                            }
-                                        }
-                                    },
-                                    egui::vec2(0.5, 0.8),
-                                )
-                        );
-                    });
+                egui::Image::new(
+                    egui::include_image!("../assets/emitter.png")
+                )
+                    .max_size(egui::vec2(30.0, 30.0))
+                    .rotate(
+                        if is_up {
+                            if is_left {
+                                self.left.position().theta() * PI / 180.0 + PI / 2.0
+                            } else {
+                                self.right.position().theta() * PI / 180.0 - PI / 2.0
+                            }
+                        } else {
+                            if is_left {
+                                if self.left.position().theta().abs() < 90.0 {
+                                    PI / 2.0
+                                } else {
+                                    -PI / 2.0
+                                }
+                            } else {
+                                if arm.position().theta().abs() < 90.0 {
+                                    -PI / 2.0
+                                } else {
+                                    PI / 2.0
+                                }
+                            }
+                        },
+                        egui::vec2(0.5, 0.8),
+                    )
+                    .paint_at(ui, rect);
 
                 // Next position
-                let next_pos = ui.min_rect().min + egui::vec2(
-                    (arm.next().x() + if is_left { 1417.0 } else { -70.0 }) * ui.min_rect().width() / 1347.0,
-                    if is_up { -(arm.next().y() - 495.0) * ui.min_rect().height() / 990.0 } else { (arm.next().z() - 1.0) * (ui.min_rect().height() / 680.0) },
-                );// - egui::vec2(15.0, 15.0);
+                let next_pos = ui.min_rect().min + egui::vec2(if is_left { 25.0 } else { 5.0 }, 25.0) + egui::vec2(
+                    (arm.next().x() + if is_left { 1417.0 } else { -70.0 }) * width / 1347.0,
+                    if is_up {
+                        -(arm.next().y() - 495.0) * height / 990.0 
+                    } else { 
+                        (arm.next().z() - 1.0) * (height / 680.0) 
+                    }
+                );
                 
-                let rect = egui::Rect::from_two_pos(
+                let next_rect_small = egui::Rect::from_two_pos(
+                    next_pos - egui::vec2(5.0, 5.0),
+                    next_pos + egui::vec2(5.0, 5.0)
+                );
+
+                let next_rect = egui::Rect::from_two_pos(
                     next_pos - egui::vec2(15.0, 24.0),
                     next_pos + egui::vec2(15.0, 6.0)
                 );
 
-                /*let area = egui::Area::new(format!("next_{}_emitter{}", if is_left { "left" } else { "right" }, if is_up { "" } else { "_depth" }))
-                    .fixed_pos(next_pos)
-                    .movable(true)
-                    .constrain_to(ui.min_rect())
-                    .show(ui.ctx(), |ui| {*/
-                        let area = egui::Image::new(
-                            egui::include_image!("../assets/emitter.png")
-                        )
-                            .max_size(egui::vec2(30.0, 30.0))
-                            .tint(egui::Color32::from_rgba_premultiplied(
-                                0,
-                                0,
-                                0,
-                                100,
-                            ))
-                            .rotate(
-                                if is_up {
-                                    if is_left {
-                                        self.left.next().theta() * PI / 180.0 + PI / 2.0
-                                    } else {
-                                        self.right.next().theta() * PI / 180.0 - PI / 2.0
-                                    }
+                let area = ui.allocate_rect(next_rect_small, egui::Sense::drag());
+
+                egui::Image::new(
+                    egui::include_image!("../assets/emitter.png")
+                )
+                    .max_size(egui::vec2(30.0, 30.0))
+                    .tint(egui::Color32::from_rgba_premultiplied(
+                        0,
+                        0,
+                        0,
+                        100,
+                    ))
+                    .rotate(
+                        if is_up {
+                            if is_left {
+                                self.left.next().theta() * PI / 180.0 + PI / 2.0
+                            } else {
+                                self.right.next().theta() * PI / 180.0 - PI / 2.0
+                            }
+                        } else {
+                            if is_left {
+                                if self.left.next().theta().abs() < 90.0 {
+                                    PI / 2.0
                                 } else {
-                                    if is_left {
-                                        if self.left.next().theta().abs() < 90.0 {
-                                            PI / 2.0
-                                        } else {
-                                            -PI / 2.0
-                                        }
-                                    } else {
-                                        if self.right.next().theta().abs() < 90.0 {
-                                            -PI / 2.0
-                                        } else {
-                                            PI / 2.0
-                                        }
-                                    }
-                                },
-                                egui::vec2(0.5, 0.8),
-                            )
-                            .sense(egui::Sense::drag())
-                            .ui(ui)
-                            .with_new_rect(rect);
-                    //}).response;
+                                    -PI / 2.0
+                                }
+                            } else {
+                                if self.right.next().theta().abs() < 90.0 {
+                                    -PI / 2.0
+                                } else {
+                                    PI / 2.0
+                                }
+                            }
+                        },
+                        egui::vec2(0.5, 0.8),
+                    )
+                    .paint_at(ui, next_rect);
 
                 if area.dragged() {
-                    let pix_pos = area.rect.min
-                        + egui::vec2(15.0, 24.0)
+                    let mut pix_pos = area.rect.min
+                        + egui::vec2(5.0, 5.0)
                         - ui.min_rect().min
+                        - egui::vec2(if is_left { 25.0 } else { 5.0 }, 25.0)
                         + area.drag_delta();
+
+                    if pix_pos.x <= 0.0 {
+                        pix_pos.x = 0.0;
+                    }
+                    else if pix_pos.x >= width {
+                        pix_pos.x = width;
+                    }
+
+                    if pix_pos.y <= 0.0 {
+                        pix_pos.y = 0.0;
+                    }
+                    else if pix_pos.y >= height {
+                        pix_pos.y = height;
+                    }
 
                     arm.set_next(
                         if is_up {
                             Position::new(
-                                pix_pos.x * 1347.0 / ui.min_rect().width() + if is_left { -1417.0 } else { 70.0 },
-                                -pix_pos.y * 990.0 / ui.min_rect().height() + 495.0,
+                                pix_pos.x * 1347.0 / width + if is_left { -1417.0 } else { 70.0 },
+                                -pix_pos.y * 990.0 / height + 495.0,
                                 arm.next().z(),
                                 arm.next().theta(),
                             )
                         } else {
                             Position::new(
-                                pix_pos.x * (1347.0 / ui.min_rect().width()) + if is_left { -1417.0 } else { 70.0 },
+                                pix_pos.x * (1347.0 / width) + if is_left { -1417.0 } else { 70.0 },
                                 arm.next().y(),
-                                pix_pos.y * (680.0 / ui.min_rect().height()),
+                                pix_pos.y * (680.0 / height),
                                 arm.next().theta(),
                             )
                         });
@@ -482,11 +502,11 @@ impl TemplateApp {
     pub fn move_next(&mut self) {
         self.left.move_next();
         self.right.move_next();
-        self.send(Command::Go(DriverType::ALL, self.left, self.right));
+        self.send(Command::Go(DriverType::EX, self.left, self.right));
     }
 
     pub fn reset(&mut self) {
-        self.send(Command::Reset(DriverType::RZ));
+        self.send(Command::Reset(DriverType::EX));
     }
     pub fn start(&mut self) {
         self.send(Command::Start);
