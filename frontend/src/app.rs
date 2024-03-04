@@ -46,8 +46,6 @@ pub struct TemplateApp {
 
     #[serde(skip)]
     stream: EventClient,
-    #[serde(skip)]
-    movment_pending: [bool;8],
 }
 
 
@@ -62,7 +60,6 @@ impl Default for TemplateApp {
             left: left_arm,
             right: right_arm,
             stream: client,
-            movment_pending: [false,false,false,false,false,false,false,false],
         }
     }
 }
@@ -140,118 +137,173 @@ impl TemplateApp {
     pub fn side_panel(&mut self, ui: &mut egui::Ui, is_emitter: bool) {
         ui.vertical_centered(|ui| {
             ui.heading(match is_emitter {
-                true => "Position bras émetteur",
-                false => "Position bras récepteur"
+                true => "Bras émetteur",
+                false => "Bras récepteur"
             });
         });
         ui.separator();
-        ui.with_layout(
-            egui::Layout::top_down(egui::Align::Max),
-            |ui| {
+        ui.add_space(10.0);
+        egui::Grid::new(if is_emitter { "emitter_panel" } else { "receiver_panel" })
+            .min_col_width(20.0)
+            .num_columns(3)
+            .show(ui, |ui| {
                 let mut next = match is_emitter {
                     true => self.left.next(),
                     false => self.right.next()
                 };
 
-                ui.horizontal(|ui| {
-                    let mut val = next.x();
-                    if !is_emitter {
-                        ui.add_space(20.0);
-                    }
-                    ui.add(egui::Slider::new(
-                        &mut val,
+                let mut val = next.x();
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.label("X ");
+                });
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.add(egui::DragValue::new(&mut val)
+                        .clamp_range(
                         match is_emitter {
                             true => -1417.0..=-70.0,
                             false => 70.0..=1417.0
-                        },
-                    ).suffix(" mm")
+                        })
+                        .suffix(" mm")
                     );
-                    ui.label("X :");
                     next.set_x(val);
                 });
 
-                ui.horizontal(|ui| {
-                    let mut val = next.y();
-                    if !is_emitter {
-                        ui.add_space(20.0);
-                    }
-                    ui.add(egui::Slider::new(
-                        &mut val,
-                        -495.0..=495.0,
-                    ).suffix(" mm")
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let (_, rect) = ui.allocate_space(egui::vec2(10.0, 10.0));
+                    ui.painter().circle_filled(
+                        rect.min + egui::vec2(5.0, 5.0),
+                        5.0,
+                        match STATUS.lock().unwrap().borrow().as_ref() {
+                            Some(status) => {
+                                if if is_emitter {
+                                        status.movement_ex()
+                                    } else {
+                                        status.movement_rx()
+                                } {
+                                    egui::Color32::RED
+                                } else {
+                                    egui::Color32::GREEN
+                                }
+                            },
+                            None => egui::Color32::GRAY
+                        }
                     );
-                    ui.label("Y :");
+                });
+
+                ui.end_row();
+
+                let mut val = next.y();
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.label("Y ");
+                });
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.add(egui::DragValue::new(&mut val)
+                        .clamp_range(-495.0..=495.0)
+                        .suffix(" mm")
+                    );
                     next.set_y(val);
                 });
 
-                ui.horizontal(|ui| {
-                    let mut val = next.z();
-                    if !is_emitter {
-                        ui.add_space(20.0);
-                    }
-                    ui.add(egui::Slider::new(
-                        &mut val,
-                        0.0..=680.0,
-                    ).suffix(" mm")
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let (_, rect) = ui.allocate_space(egui::vec2(10.0, 10.0));
+                    ui.painter().circle_filled(
+                        rect.min + egui::vec2(5.0, 5.0),
+                        5.0,
+                        match STATUS.lock().unwrap().borrow().as_ref() {
+                            Some(status) => {
+                                if if is_emitter {
+                                        status.movement_ey()
+                                    } else {
+                                        status.movement_ry()
+                                } {
+                                    egui::Color32::RED
+                                } else {
+                                    egui::Color32::GREEN
+                                }
+                            },
+                            None => egui::Color32::GRAY
+                        }
                     );
-                    ui.label("Z :");
+                });
+
+                ui.end_row();
+
+                let mut val = next.z();
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.label("Z ");
+                });
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.add(egui::DragValue::new(&mut val)
+                        .clamp_range(0.0..=680.0)
+                        .suffix(" mm")
+                    );
                     next.set_z(val);
                 });
 
-                ui.horizontal(|ui| {
-                    let mut val = next.theta();
-                    if !is_emitter {
-                        ui.add_space(20.0);
-                    }
-                    ui.add(egui::Slider::new(
-                        &mut val,
-                        -180.0..=180.0,
-                    ).suffix("°")
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let (_, rect) = ui.allocate_space(egui::vec2(10.0, 10.0));
+                    ui.painter().circle_filled(
+                        rect.min + egui::vec2(5.0, 5.0),
+                        5.0,
+                        match STATUS.lock().unwrap().borrow().as_ref() {
+                            Some(status) => {
+                                if if is_emitter {
+                                        status.movement_ez()
+                                    } else {
+                                        status.movement_rz()
+                                } {
+                                    egui::Color32::RED
+                                } else {
+                                    egui::Color32::GREEN
+                                }
+                            },
+                            None => egui::Color32::GRAY
+                        }
                     );
-                    ui.label("θ :");
+                });
+
+                ui.end_row();
+
+                let mut val = next.theta();
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.label("θ ");
+                });
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.add(egui::DragValue::new(&mut val)
+                        .clamp_range(-180.0..=180.0)
+                        .suffix("°")
+                    );
                     next.set_theta(val);
                 });
+
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let (_, rect) = ui.allocate_space(egui::vec2(10.0, 10.0));
+                    ui.painter().circle_filled(
+                        rect.min + egui::vec2(5.0, 5.0),
+                        5.0,
+                        match STATUS.lock().unwrap().borrow().as_ref() {
+                            Some(status) => {
+                                if if is_emitter {
+                                        status.movement_et()
+                                    } else {
+                                        status.movement_rt()
+                                } {
+                                    egui::Color32::RED
+                                } else {
+                                    egui::Color32::GREEN
+                                }
+                            },
+                            None => egui::Color32::GRAY
+                        }
+                    );
+                });
+
+                ui.end_row();
 
                 match is_emitter {
                     true => self.left.set_next(next),
                     false => self.right.set_next(next)
                 }
-            }
-        );
-        ui.separator();
-        ui.vertical_centered(|ui| {
-            ui.heading(match is_emitter {
-                true => "État bras émetteur",
-                false => "État bras récepteur"
-            });
-        });
-        ui.separator();
-        ui.with_layout(
-            egui::Layout::top_down(egui::Align::Max),
-            |ui| {
-                ui.horizontal(|ui| {
-                    if !is_emitter {
-                        ui.add_space(20.0);
-                    }
-                    let (_, rect) = ui.allocate_space(egui::vec2(10.0, 10.0));
-                    ui.painter().circle_filled(
-                        rect.min + egui::vec2(5.0, 5.0),
-                        5.0,
-                        match STATUS.lock().unwrap().take() {
-                            Some(status) => {
-                                let color = if status.movement_ex() || self.movment_pending[0] {
-                                    egui::Color32::RED
-                                } else {
-                                    egui::Color32::GREEN
-                                };
-                                STATUS.lock().unwrap().replace(Some(status));
-                                color
-                            },
-                            None => egui::Color32::GRAY
-                        }
-                    );
-                    ui.label("X émetteur :");
-                });
             }
         );
     }
@@ -279,13 +331,14 @@ impl TemplateApp {
                         // ui you want inside [`.show()`]
                         modal.title(ui, "Erreur lors de la commande");
                         modal.frame(ui, |ui| {
-                            modal.body(ui, errors_string);
+                            egui::ScrollArea::vertical().show(ui, |ui| {
+                                modal.body(ui, errors_string);
+                            });
                         });
                         modal.buttons(ui, |ui| {
                             // After clicking, the modal is automatically closed
                             if modal.button(ui, "close").clicked() {
                                 *ERR_LIST.lock().unwrap() = vec![];
-                                self.movment_pending = [false,false,false,false,false,false,false,false];
                             };
                         });
                     });
@@ -438,6 +491,59 @@ impl TemplateApp {
 
                 let area = ui.allocate_rect(next_rect_small, egui::Sense::drag());
 
+                if is_up {
+                    let angle = if is_left {
+                        self.left.next().theta() * PI / 180.0
+                    } else {
+                        self.right.next().theta() * PI / 180.0 + PI
+                    };
+
+                    let angle_rect = egui::Rect::from_two_pos(
+                        next_pos + 30.0 * egui::vec2(angle.cos(), angle.sin()) - egui::vec2(5.0, 5.0),
+                        next_pos + 30.0 * egui::vec2(angle.cos(), angle.sin()) + egui::vec2(5.0, 5.0)
+                    );
+
+                    let angle_area = ui.allocate_rect(angle_rect, egui::Sense::click_and_drag());
+
+                    let painter: &mut egui::Painter = ui.painter();
+                    painter.set_clip_rect(ui.min_rect());
+                    painter.circle_filled(
+                        next_pos + 30.0 * egui::vec2(angle.cos(), angle.sin()),
+                        5.0,
+                        egui::Color32::from_rgba_premultiplied(
+                            0,
+                            0,
+                            0,
+                            if angle_area.hovered() { 100 } else { 50 }
+                        )
+                    );
+
+                    if angle_area.dragged() {
+                        let pix_pos = angle_area.rect.center()
+                            - next_pos
+                            + angle_area.drag_delta();
+
+                        let mut new_angle = (f32::atan2(pix_pos.y, pix_pos.x) + if is_left { 0.0 } else { -PI }) * 180.0 / PI;
+
+                        if new_angle < -180.0 {
+                            new_angle = -180.0;
+                        }
+
+                        if new_angle >= 180.0 {
+                            new_angle = 180.0;
+                        }
+
+                        arm.set_next(
+                            Position::new(
+                                arm.next().x(),
+                                arm.next().y(),
+                                arm.next().z(),
+                                new_angle,
+                            )
+                        );
+                    }
+                }
+
                 egui::Image::new(
                     egui::include_image!("../assets/emitter.png")
                 )
@@ -530,8 +636,7 @@ impl TemplateApp {
     }
 
     pub fn origin(&mut self) {
-        self.movment_pending = [true,true,true,true,true,true,true,true];
-        self.send(Command::Zero(DriverType::ALL));
+        self.send(Command::Zero(DriverType::ETHETA));
 
         self.left.origin();
         self.right.origin();
@@ -540,11 +645,11 @@ impl TemplateApp {
     pub fn move_next(&mut self) {
         self.left.move_next();
         self.right.move_next();
-        self.send(Command::Go(DriverType::EX, self.left, self.right));
+        self.send(Command::Go(DriverType::ETHETA, self.left, self.right));
     }
 
     pub fn reset(&mut self) {
-        self.send(Command::Reset(DriverType::EX));
+        self.send(Command::Reset(DriverType::ETHETA));
     }
     pub fn start(&mut self) {
         self.send(Command::Start);
@@ -594,18 +699,25 @@ impl eframe::App for TemplateApp {
         });
 
         egui::SidePanel::left("left")
-            .resizable(false)
-            .exact_width(220.0)
-            .show(ctx, |ui|
-                self.side_panel(ui, true),
-            );
+            .resizable(true)
+            .show(ctx, |ui| {
+                ui.add_space(5.0);
+                self.side_panel(ui, true);
+                ui.add_space(10.0);
+                ui.separator();
+                ui.separator();
+                self.side_panel(ui, false);
+                ui.add_space(10.0);
+                ui.separator();
+            });
 
+        /*
         egui::SidePanel::right("right")
             .resizable(false)
-            .exact_width(230.0)
             .show(ctx, |ui|
                 self.side_panel(ui, false),
             );
+        */
 
         egui::CentralPanel::default().show(ctx, |ui| {
 
