@@ -34,7 +34,7 @@ use crate::error_handler::{
 
 pub static STREAM: Mutex<RefCell<Option<Client<TcpStream>>>> = Mutex::new(RefCell::new(None));
 pub static DRIVERS: Mutex<RefCell<Option<ArmsBackend>>> = Mutex::new(RefCell::new(None));
-pub static MUTEX_UESED: Mutex<RefCell<bool>> = Mutex::new(RefCell::new(false));
+pub static MUTEX_USED: Mutex<RefCell<bool>> = Mutex::new(RefCell::new(false));
 pub static STREAM_LOG_ERRORS: Mutex<RefCell<Option<File>>> = Mutex::new(RefCell::new(None));
 pub static STREAM_LOG_IO: Mutex<RefCell<Option<File>>> = Mutex::new(RefCell::new(None));
 pub static STREAM_LOG_TCP: Mutex<RefCell<Option<File>>> = Mutex::new(RefCell::new(None));
@@ -43,7 +43,7 @@ fn handle_client() -> std::io::Result<()> {
     let _join_1 = match Builder::new().name("update_thread".to_string()).spawn(|| {
         loop {
             sleep(Duration::new(1, 0));
-            while match MUTEX_UESED.try_lock() {
+            while match MUTEX_USED.try_lock() {
                 Ok(used) =>
                     {
                         if used.borrow().eq(&false) {
@@ -109,7 +109,7 @@ fn handle_client() -> std::io::Result<()> {
     let _join_2 = match Builder::new().name("check_theard".to_string()).spawn(|| {
         loop {
             sleep(Duration::new(5, 0));
-            while match MUTEX_UESED.try_lock() {
+            while match MUTEX_USED.try_lock() {
                 Ok(used) =>
                     {
                         if used.borrow().eq(&false) {
@@ -146,7 +146,7 @@ fn handle_client() -> std::io::Result<()> {
                         false
                     }
                 Err(_) => {
-                    std::thread::sleep(Duration::new(0, 500_000_000));
+                    sleep(Duration::new(0, 500_000_000));
                     true
                 }
             } {};
@@ -210,14 +210,14 @@ fn handle_client() -> std::io::Result<()> {
 
 pub fn tcp_listen() -> std::io::Result<()> {
     STREAM_LOG_ERRORS.lock().unwrap().replace(
-        Some(OpenOptions::new().append(true).create(true).open("error.log").expect("Erreur ouverture fichier error.log"))
+        Some(OpenOptions::new().append(true).create(true).open("./log/error.log").expect("Erreur ouverture fichier ./log/error.log"))
     );
 
     STREAM_LOG_TCP.lock().unwrap().replace(
-        match OpenOptions::new().append(true).create(true).open("tcp.log") {
+        match OpenOptions::new().append(true).create(true).open("./log/tcp.log") {
             Ok(f) => Some(f),
             Err(e) => {
-                write_error_log("Could not open tcp.log".to_string());
+                write_error_log("Could not open ./log/tcp.log".to_string());
                 return Err(e);
             }
         }
@@ -225,10 +225,10 @@ pub fn tcp_listen() -> std::io::Result<()> {
 
 
     STREAM_LOG_IO.lock().unwrap().replace(
-        match OpenOptions::new().append(true).create(true).open("io.log") {
+        match OpenOptions::new().append(true).create(true).open("./log/io.log") {
             Ok(f) => Some(f),
             Err(e) => {
-                write_error_log("Could not open io.log".to_string());
+                write_error_log("Could not open ./log/io.log".to_string());
                 return Err(e);
             }
         }

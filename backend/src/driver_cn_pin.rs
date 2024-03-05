@@ -57,44 +57,44 @@ impl DriverCnPin {
             DriverType::EY => {
                 pin_go = 45;
                 pin_reset = 33;
-                pin_zero = 66;
-                pin_fin_mvt = 74;
+                pin_zero = 74;
+                pin_fin_mvt = 66;
             }
             DriverType::EZ => {
                 pin_go = 46;
                 pin_reset = 34;
-                pin_zero = 67;
-                pin_fin_mvt = 75;
+                pin_zero = 75;
+                pin_fin_mvt = 67;
             }
             DriverType::ETHETA => {
                 pin_go = 47;
                 pin_reset = 35;
-                pin_zero = 68;
-                pin_fin_mvt = 76;
+                pin_zero = 76;
+                pin_fin_mvt = 68;
             }
             DriverType::RX => {
                 pin_go = 48;
                 pin_reset = 36;
-                pin_zero = 69;
-                pin_fin_mvt = 77;
+                pin_zero = 77;
+                pin_fin_mvt = 69;
             }
             DriverType::RY => {
                 pin_go = 49;
                 pin_reset = 37;
-                pin_zero = 70;
-                pin_fin_mvt = 78;
+                pin_zero = 78;
+                pin_fin_mvt = 70;
             }
             DriverType::RZ => {
                 pin_go = 50;
                 pin_reset = 38;
-                pin_zero = 71;
-                pin_fin_mvt = 79;
+                pin_zero = 79;
+                pin_fin_mvt = 71;
             }
             DriverType::RTHETA => {
                 pin_go = 51;
                 pin_reset = 39;
-                pin_zero = 72;
-                pin_fin_mvt = 80;
+                pin_zero = 80;
+                pin_fin_mvt = 72;
             }
             _ => {
                 pin_go = 0;

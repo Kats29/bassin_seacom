@@ -19,7 +19,10 @@ use crate::tcp_socket::{
 
 pub fn handle_pin_read_error(pin: Pin) -> Result<u8, HardwareError> {
     match pin.get_value() {
-        Ok(v) => Ok(v),
+        Ok(v) => {
+            write_io_log(format!("Signal {} read from GPIO_{}",v,  pin.get_pin()));
+            Ok(v)
+        },
         Err(_) => Err(HardwareError::PinRead(pin.get_pin() as u8))
     }
 }
@@ -27,6 +30,7 @@ pub fn handle_pin_read_error(pin: Pin) -> Result<u8, HardwareError> {
 pub fn handle_pin_write_error(pin: Pin, value: u8) -> Result<(), HardwareError> {
     match pin.set_value(value) {
         Ok(_) => {
+            write_io_log(format!("GPIO_{} set to {}", pin.get_pin(), value));
             Ok(())
         }
         Err(_) => {

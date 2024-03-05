@@ -152,6 +152,7 @@ impl ArmsBackend {
     pub fn check_status(&self) -> Status {
         let tmp = ERR_LIST.lock().unwrap();
         let mut vec_error = tmp.borrow_mut();
+        *vec_error = vec![];
         let status = Status::new(
             match handle_pin_read_error(self.pin_porte_droite_bas) {
                 Ok(result) => {
@@ -414,24 +415,20 @@ impl ArmsBackend {
     }
 
     pub fn update(&mut self, command: Command) -> Result<(), HardwareError> {
-        println!("nouvelle commande");
         self.check_status();
-
         match command {
             Command::Go(dt, arm_e, arm_r) => {
-                println!("Go pour {}", dt);
                 self.write_go(dt, arm_e, arm_r)?;
                 block_on(self.pin_go(dt))
             }
             Command::Reset(dt) => block_on(self.reset(dt)),
             Command::Zero(dt) => {
-                println!("Retour a l'origine");
                 self.zero(dt)
             }
-            Command::ArrUrg => self.arr_urg(true),
-            Command::StopArrUrg => self.arr_urg(false),
-            Command::ArrMom => self.arr_mom(true),
-            Command::StopArrMom => self.arr_mom(false),
+            Command::ArrUrg => self.arr_urg(),
+            Command::StopArrUrg => self.arr_urg(),
+            Command::ArrMom => self.arr_mom(),
+            Command::StopArrMom => self.arr_mom(),
             Command::Start => self.start_bassin(),
             Command::Stop => self.stop_bassin(),
         }
@@ -675,13 +672,15 @@ impl ArmsBackend {
         }
     }
 
-    fn arr_urg(&self, is_hight: bool) -> Result<(), HardwareError> {
-        handle_pin_write_error(self.pin_ordre_ar_urg, if is_hight { 1 } else { 0 })?;
+    fn arr_urg(&self) -> Result<(), HardwareError> {
+        let is_hight = handle_pin_read_error(self.pin_ordre_ar_urg)?;
+        handle_pin_write_error(self.pin_ordre_ar_urg, (!is_hight)&1)?;
         Ok(())
     }
 
-    fn arr_mom(&self, is_hight: bool) -> Result<(), HardwareError> {
-        handle_pin_write_error(self.pin_ar_mom, if is_hight { 1 } else { 0 })?;
+    fn arr_mom(&self) -> Result<(), HardwareError> {
+        let is_hight = handle_pin_read_error(self.pin_ordre_ar_urg)?;
+        handle_pin_write_error(self.pin_ar_mom, (!is_hight)&1)?;
         Ok(())
     }
 
