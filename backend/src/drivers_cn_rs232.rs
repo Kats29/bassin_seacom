@@ -1,21 +1,13 @@
 use std::fs::File;
 use i2c_linux::I2c;
 use sysfs_gpio::{Direction, Pin};
-
+use strum::IntoEnumIterator;
 use common::{
     error::HardwareError,
     definitions::DriverType,
 };
 
-use crate::error_handler::{
-    handle_i2c_creation_error,
-    handle_i2c_read_error,
-    handle_i2c_set_slave_error,
-    handle_i2c_write_error,
-    handle_pin_direction_error,
-    handle_pin_export_error,
-    handle_pin_read_error
-};
+use crate::error_handler::{handle_i2c_creation_error, handle_i2c_read_error, handle_i2c_set_slave_error, handle_i2c_write_error, handle_pin_direction_error, handle_pin_export_error, handle_pin_read_error};
 
 pub fn get_i2c_addr_value(i2c_type: DriverType) -> u8 {
     return match i2c_type {
@@ -77,6 +69,7 @@ impl DriversCnRs232{
         handle_pin_export_error(pin)?;
         handle_pin_direction_error(pin,Direction::In)?;
 
+
         pin = Pin::new(102);
         handle_pin_export_error(pin)?;
         handle_pin_direction_error(pin,Direction::In)?;
@@ -84,8 +77,33 @@ impl DriversCnRs232{
         pin = Pin::new(103);
         handle_pin_export_error(pin)?;
         handle_pin_direction_error(pin,Direction::In)?;
-
+        //driver.configuration()?;
         Ok(driver)
+    }
+
+    pub fn configuration(&mut self) -> Result<(),HardwareError>{
+        for dt in DriverType::iter(){
+            match dt {
+                DriverType::EX |
+                DriverType::EY |
+                DriverType::EZ |
+                DriverType::ETHETA |
+                DriverType::RX |
+                DriverType::RY |
+                DriverType::RZ |
+                DriverType::RTHETA => {
+                    handle_i2c_set_slave_error(self.i2c_handler.as_mut().unwrap(), get_i2c_addr_value(dt) as u16, dt)?;
+                    handle_i2c_write_error(self.i2c_handler.as_mut().unwrap(), 0x01,0x40 , dt)?;
+                    handle_i2c_write_error(self.i2c_handler.as_mut().unwrap(), 0x0A,0x08 , dt)?;
+                    handle_i2c_write_error(self.i2c_handler.as_mut().unwrap(), 0x0B,0x03 , dt)?;
+                    handle_i2c_write_error(self.i2c_handler.as_mut().unwrap(), 0x0C,0x01 , dt)?;
+                }
+                _ => {}
+            }
+        }
+        handle_i2c_set_slave_error(self.i2c_handler.as_mut().unwrap(), ADDR_X_E as u16,DriverType::EX)?;
+
+        Ok(())
     }
 
     pub fn write_i2c(&mut self, data: [u8; 9], type_cn : DriverType) -> Result<(),HardwareError>{

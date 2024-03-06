@@ -18,7 +18,7 @@ use common::{
 
 use crate::driver_cn_pin::DriverCnPin;
 use crate::drivers_cn_rs232::DriversCnRs232;
-use crate::error_handler::{handle_pin_direction_error, handle_pin_export_error, handle_pin_read_error, handle_pin_write_error, write_error_log, write_io_log};
+use crate::error_handler::{handle_pin_direction_error, handle_pin_export_error, handle_pin_read_error, handle_pin_set_active_low, handle_pin_write_error};
 
 pub static ERR_LIST: Mutex<RefCell<Vec<Result<(), HardwareError>>>> = Mutex::new(RefCell::new(vec![]));
 
@@ -97,17 +97,6 @@ impl ArmsBackend {
 
         arms.global_pin_direction()?;
 
-        match arms.pin_on.set_active_low(true) {
-            Ok(_) => {
-                write_io_log(format!("GPIO_{} is set active at low", arms.pin_on.get_pin()));
-                Ok(())
-            }
-            Err(_) => {
-                write_error_log(format!("Unable to set GPIO_{} active at low", arms.pin_on.get_pin()));
-                Err(HardwareError::UnknownError)
-            }
-        }?;
-
         Ok(arms)
     }
 
@@ -116,6 +105,7 @@ impl ArmsBackend {
         self.pin_on = Pin::new(61);
         self.pin_ar_mom = Pin::new(62);
         self.pin_info_etat = Pin::new(63);
+
         self.pin_info_ar_urg = Pin::new(81);
         self.pin_porte_gauche_bas = Pin::new(86);
         self.pin_porte_gauche_haut = Pin::new(87);
@@ -137,16 +127,25 @@ impl ArmsBackend {
     }
 
     fn global_pin_direction(&self) -> Result<(), HardwareError> {
+        handle_pin_set_active_low(self.pin_on, true)?;
+        handle_pin_set_active_low(self.pin_ordre_ar_urg, true)?;
+        handle_pin_set_active_low(self.pin_ar_mom, true)?;
         handle_pin_direction_error(self.pin_on, Direction::High)?;
         handle_pin_direction_error(self.pin_ordre_ar_urg, Direction::Low)?;
         handle_pin_direction_error(self.pin_ar_mom, Direction::Low)?;
 
-        handle_pin_direction_error(self.pin_info_etat, Direction::Low)?;
-        handle_pin_direction_error(self.pin_info_etat, Direction::Low)?;
+        handle_pin_set_active_low(self.pin_info_etat, true)?;
+        handle_pin_set_active_low(self.pin_info_ar_urg, true)?;
+        handle_pin_set_active_low(self.pin_porte_gauche_bas, true)?;
+        handle_pin_set_active_low(self.pin_porte_gauche_haut, true)?;
+        handle_pin_set_active_low(self.pin_porte_droite_bas, true)?;
+        handle_pin_set_active_low(self.pin_porte_droite_haut, true)?;
+        handle_pin_direction_error(self.pin_info_etat, Direction::In)?;
         handle_pin_direction_error(self.pin_info_ar_urg, Direction::In)?;
         handle_pin_direction_error(self.pin_porte_gauche_bas, Direction::In)?;
         handle_pin_direction_error(self.pin_porte_gauche_haut, Direction::In)?;
-        handle_pin_direction_error(self.pin_porte_droite_bas, Direction::In)
+        handle_pin_direction_error(self.pin_porte_droite_bas, Direction::In)?;
+        handle_pin_direction_error(self.pin_porte_droite_haut, Direction::In)
     }
 
     pub fn check_status(&self) -> Status {
@@ -181,14 +180,12 @@ impl ArmsBackend {
                     true
                 }
             },
-
             match handle_pin_read_error(self.pin_porte_gauche_bas) {
                 Ok(result) => {
                     if result == 0 {
                         vec_error.push(Err(HardwareError::OpenDoor(Doors::GaucheBas)));
                         true
-                    }
-                    else{
+                    } else {
                         false
                     }
                 }
@@ -197,21 +194,20 @@ impl ArmsBackend {
                     true
                 }
             } ||
-            match handle_pin_read_error(self.pin_porte_gauche_haut) {
-                Ok(result) => {
-                    if result == 0 {
-                        vec_error.push(Err(HardwareError::OpenDoor(Doors::GaucheBas)));
+                match handle_pin_read_error(self.pin_porte_gauche_haut) {
+                    Ok(result) => {
+                        if result == 0 {
+                            vec_error.push(Err(HardwareError::OpenDoor(Doors::GaucheBas)));
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    Err(e) => {
+                        vec_error.push(Err(e));
                         true
                     }
-                    else{
-                        false
-                    }
                 }
-                Err(e) => {
-                    vec_error.push(Err(e));
-                    true
-                }
-            }
             ,
             match handle_pin_read_error(self.pin_info_etat) {
                 Ok(result) => {
@@ -244,7 +240,7 @@ impl ArmsBackend {
             ,
             match handle_pin_read_error(self.pin_info_ar_urg) {
                 Ok(result) => {
-                    if result == 1 {
+                    if result == 0 {
                         vec_error.push(Err(HardwareError::ArrUrg));
                         true
                     } else {
@@ -258,7 +254,7 @@ impl ArmsBackend {
             },
             match handle_pin_read_error(self.pin_ar_mom) {
                 Ok(result) => {
-                    if result == 1 {
+                    if result == 0 {
                         vec_error.push(Err(HardwareError::ArrMom));
                         true
                     } else {
@@ -270,148 +266,82 @@ impl ArmsBackend {
                     false
                 }
             },
-
             match self.driver_x_emetteur.movement_finished() {
                 Ok(_) => {
-                    true
+                    false
                 }
                 Err(e) => {
                     vec_error.push(Err(e));
-                    false
+                    true
                 }
             },
-
             match self.driver_y_emetteur.movement_finished() {
                 Ok(_) => {
-                    true
+                    false
                 }
                 Err(e) => {
                     vec_error.push(Err(e));
-                    false
+                    true
                 }
             },
             match self.driver_z_emetteur.movement_finished() {
                 Ok(_) => {
-                    true
+                    false
                 }
                 Err(e) => {
                     vec_error.push(Err(e));
-                    false
+                    true
                 }
             },
-
             match self.driver_t_emetteur.movement_finished() {
                 Ok(_) => {
-                    true
+                    false
                 }
                 Err(e) => {
                     vec_error.push(Err(e));
-                    false
+                    true
                 }
             },
-
             match self.driver_x_recepteur.movement_finished() {
                 Ok(_) => {
-                    true
+                    false
                 }
                 Err(e) => {
                     vec_error.push(Err(e));
-                    false
+                    true
                 }
             },
             match self.driver_y_recepteur.movement_finished() {
                 Ok(_) => {
-                    true
+                    false
                 }
                 Err(e) => {
                     vec_error.push(Err(e));
-                    false
+                    true
                 }
             },
             match self.driver_z_recepteur.movement_finished() {
                 Ok(_) => {
-                    true
+                    false
                 }
                 Err(e) => {
                     vec_error.push(Err(e));
-                    false
+                    true
                 }
             },
             match self.driver_t_recepteur.movement_finished() {
                 Ok(_) => {
-                    true
+                    false
                 }
                 Err(e) => {
                     vec_error.push(Err(e));
-                    false
+                    true
                 }
             },
         );
 
 
         return status;
-    }
-
-    fn movement_finished(&self) -> Vec<Result<(), HardwareError>> {
-        let mut error = vec![];
-
-        match self.driver_x_emetteur.movement_finished() {
-            Ok(_) => {}
-            Err(e) => {
-                error.push(Err(e));
-            }
-        }
-
-        match self.driver_y_emetteur.movement_finished() {
-            Ok(_) => {}
-            Err(e) => {
-                error.push(Err(e));
-            }
-        }
-
-        match self.driver_z_emetteur.movement_finished() {
-            Ok(_) => {}
-            Err(e) => {
-                error.push(Err(e));
-            }
-        }
-
-        match self.driver_t_emetteur.movement_finished() {
-            Ok(_) => {}
-            Err(e) => {
-                error.push(Err(e));
-            }
-        }
-
-        match self.driver_x_recepteur.movement_finished() {
-            Ok(_) => {}
-            Err(e) => {
-                error.push(Err(e));
-            }
-        }
-
-        match self.driver_y_recepteur.movement_finished() {
-            Ok(_) => {}
-            Err(e) => {
-                error.push(Err(e));
-            }
-        }
-
-        match self.driver_z_recepteur.movement_finished() {
-            Ok(_) => {}
-            Err(e) => {
-                error.push(Err(e));
-            }
-        }
-
-        match self.driver_t_recepteur.movement_finished() {
-            Ok(_) => {}
-            Err(e) => {
-                error.push(Err(e));
-            }
-        }
-
-        error
     }
 
     pub fn update(&mut self, command: Command) -> Result<(), HardwareError> {
@@ -674,13 +604,13 @@ impl ArmsBackend {
 
     fn arr_urg(&self) -> Result<(), HardwareError> {
         let is_hight = handle_pin_read_error(self.pin_ordre_ar_urg)?;
-        handle_pin_write_error(self.pin_ordre_ar_urg, (!is_hight)&1)?;
+        handle_pin_write_error(self.pin_ordre_ar_urg, (!is_hight) & 1)?;
         Ok(())
     }
 
     fn arr_mom(&self) -> Result<(), HardwareError> {
         let is_hight = handle_pin_read_error(self.pin_ordre_ar_urg)?;
-        handle_pin_write_error(self.pin_ar_mom, (!is_hight)&1)?;
+        handle_pin_write_error(self.pin_ar_mom, (!is_hight) & 1)?;
         Ok(())
     }
 

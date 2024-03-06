@@ -20,7 +20,7 @@ impl Display for Doors {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug,strum::EnumIter)]
 pub enum DriverType {
     EX,
     EY,
@@ -281,6 +281,58 @@ impl Status {
             movement_rz,
             movement_rt,
         }
+    }
+
+    pub fn ne(self,equal : Self) -> bool{
+        if self.door_left_open() != equal.door_left_open() {
+            return true;
+        }
+        if self.door_right_open() != equal.door_right_open(){
+            return true;
+        }
+
+        if self.bassin_powered() != equal.bassin_powered() {
+            return true;
+        }
+        if self.bassin_started() != equal.bassin_started(){
+            return true;
+        }
+        if self.arr_mom() != equal.arr_mom() {
+            return true;
+        }
+        if self.arr_mom() != equal.arr_mom(){
+            return true;
+        }
+
+
+        if self.movement_ex() != equal.movement_ex() {
+            return true;
+        }
+        if self.movement_ey() != equal.movement_ey(){
+            return true;
+        }
+        if self.movement_ez() != equal.movement_ez() {
+            return true;
+        }
+        if self.movement_et() != equal.movement_et(){
+            return true;
+        }
+
+
+        if self.movement_rx() != equal.movement_rx() {
+            return true;
+        }
+        if self.movement_ry() != equal.movement_ry(){
+            return true;
+        }
+        if self.movement_rz() != equal.movement_rz() {
+            return true;
+        }
+        if self.movement_rt() != equal.movement_rt(){
+            return true;
+        }
+
+        return false
     }
 
     pub fn door_right_open(self) -> bool {

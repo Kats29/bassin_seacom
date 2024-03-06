@@ -21,7 +21,7 @@ use websocket::{
     stream::sync::TcpStream,
 };
 
-use common::definitions::Command;
+use common::definitions::{Command, Status};
 
 use crate::arm_backend::{
     ArmsBackend,
@@ -42,7 +42,6 @@ pub static STREAM_LOG_TCP: Mutex<RefCell<Option<File>>> = Mutex::new(RefCell::ne
 fn handle_client() -> std::io::Result<()> {
     let _join_1 = match Builder::new().name("update_thread".to_string()).spawn(|| {
         loop {
-            sleep(Duration::new(1, 0));
             while match MUTEX_USED.try_lock() {
                 Ok(used) =>
                     {
@@ -98,6 +97,7 @@ fn handle_client() -> std::io::Result<()> {
                     true
                 }
             } {};
+            sleep(Duration::new(1, 0));
         }
     }) {
         Ok(jh) => jh,
@@ -107,8 +107,8 @@ fn handle_client() -> std::io::Result<()> {
         }
     };
     let _join_2 = match Builder::new().name("check_theard".to_string()).spawn(|| {
+        let mut status = Status::default();
         loop {
-            sleep(Duration::new(5, 0));
             while match MUTEX_USED.try_lock() {
                 Ok(used) =>
                     {
@@ -117,26 +117,28 @@ fn handle_client() -> std::io::Result<()> {
                             while match DRIVERS.try_lock() {
                                 Ok(driv) => {
                                     let check = driv.borrow().as_ref().unwrap().check_status();
-                                    let result = serde_json::to_string(&check).unwrap();
-                                    while match STREAM.try_lock() {
-                                        Ok(stream) => {
-                                            while match stream.borrow_mut().as_mut().unwrap().send_message(&websocket::Message::text(result.clone())) {
-                                                Ok(_) => {
-                                                    write_tcp_log(format!("Data({:?}) send from Thread Check", result));
-                                                    false
+                                    if check.ne(status) {
+                                        status = check;
+                                        let result = serde_json::to_string(&status).unwrap();
+                                        while match STREAM.try_lock() {
+                                            Ok(stream) => {
+                                                while match stream.borrow_mut().as_mut().unwrap().send_message(&websocket::Message::text(result.clone())) {
+                                                    Ok(_) => {
+                                                        write_tcp_log(format!("Data({:?}) send from Thread Check", result));
+                                                        false
+                                                    }
+                                                    Err(_) => {
+                                                        write_error_log(format!("Could not send data({:?}) from Thread Update", result));
+                                                        false
+                                                    }
+                                                } {
+                                                    sleep(Duration::new(0, 500_000_000));
                                                 }
-                                                Err(_) => {
-                                                    write_error_log(format!("Could not send data({:?}) from Thread Update", result));
-                                                    true
-                                                }
-                                            } {
-                                                sleep(Duration::new(0, 500_000_000));
+                                                false
                                             }
-                                            false
-                                        }
-                                        Err(_) => true
-                                    } {};
-
+                                            Err(_) => true
+                                        } {};
+                                    }
                                     false
                                 }
                                 Err(_) => true
@@ -146,10 +148,13 @@ fn handle_client() -> std::io::Result<()> {
                         false
                     }
                 Err(_) => {
-                    sleep(Duration::new(0, 500_000_000));
+                    sleep(Duration::new(0, 500_000));
                     true
                 }
             } {};
+
+
+            sleep(Duration::new(0, 500_000));
         }
     }) {
         Ok(jh) => jh,

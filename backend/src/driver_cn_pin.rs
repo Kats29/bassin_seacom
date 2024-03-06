@@ -11,12 +11,7 @@ use common::{
     error::HardwareError,
 };
 
-use crate::error_handler::{
-    handle_pin_write_error,
-    handle_pin_read_error,
-    handle_pin_export_error,
-    handle_pin_direction_error,
-};
+use crate::error_handler::{handle_pin_write_error, handle_pin_read_error, handle_pin_export_error, handle_pin_direction_error, handle_pin_set_active_low};
 
 pub struct DriverCnPin {
     pin_go: Pin,
@@ -117,9 +112,13 @@ impl DriverCnPin {
     }
 
     fn set_direction(&mut self) -> Result<(),HardwareError> {
-        handle_pin_direction_error(self.pin_go,Direction::Out)?;
-        handle_pin_direction_error(self.pin_reset,Direction::Out)?;
-        handle_pin_direction_error(self.pin_zero,Direction::Out)?;
+        handle_pin_set_active_low(self.pin_go,true)?;
+        handle_pin_set_active_low(self.pin_reset,true)?;
+        handle_pin_set_active_low(self.pin_zero,true)?;
+        handle_pin_set_active_low(self.pin_fin_mvt,true)?;
+        handle_pin_direction_error(self.pin_go,Direction::High)?;
+        handle_pin_direction_error(self.pin_reset,Direction::High)?;
+        handle_pin_direction_error(self.pin_zero,Direction::High)?;
         handle_pin_direction_error(self.pin_fin_mvt,Direction::In)?;
 
         return Ok(());
@@ -140,14 +139,7 @@ impl DriverCnPin {
     }
 
     pub fn go(&self) -> Result<(),HardwareError> {
-        let go = handle_pin_read_error(self.pin_go)?;
-
-
-        let fin_mvt = handle_pin_read_error(self.pin_fin_mvt)?;
-
-        if go == 1 || fin_mvt == 0 {
-            return Err(HardwareError::MovmentNotFinished(self.get_driver_type()));
-        }
+        self.movement_finished()?;
         handle_pin_write_error(self.pin_go,1)?;
         sleep(Duration::from_millis(10));
 
@@ -159,7 +151,7 @@ impl DriverCnPin {
 
     pub fn reset(&self) -> Result<(),HardwareError>{
         handle_pin_write_error(self.pin_reset,1)?;
-        sleep(Duration::from_millis(1));
+        sleep(Duration::from_millis(500));
         handle_pin_write_error(self.pin_reset,0)?;
         Ok(())
     }
@@ -167,7 +159,7 @@ impl DriverCnPin {
     pub fn zero(&self) -> Result<(),HardwareError>{
 
         handle_pin_write_error(self.pin_zero,1)?;
-        sleep(Duration::from_millis(1));
+        sleep(Duration::from_millis(500));
         handle_pin_write_error(self.pin_zero,0)?;
         Ok(())
     }
