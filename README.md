@@ -1,0 +1,69 @@
+# Bassin Laboratoire SEACom - ISEN
+
+Ce projet vise à remettre le bassin de test du laboratoire SEACom de l'ISEN au goût du jour. Pour cela, une interface Web est déployée sur un serveur Ethernet hébergé sur une carte Beaglebone Black qui communique avec le bassin via un shield customisé.
+
+## Installation
+
+### Configuration de la carte Beaglebone
+
+Premièrement, afin d'avoir accès à tous les ports GPIO de la carte, celle-ci doit être démarrée à partir d'une carte SD au lieu de sa mémoire interne. Pour ce faire, téléchargez [la dernière image de Debian pour Beaglenone Black](https://www.beagleboard.org/distros) et flashez-la sur votre carte SD. Faites attention de bien choisir une image et non pas un flasher eMMC (le nom devrait finir par `4GB microSD IoT`).
+
+Puisque les dernières versions ont un serveur nginx préinstallé, c'est ce que ce projet va utiliser.
+
+Une fois la carte SD insérée dans la Beaglebone et celle-ci branchée sur le même réseau que votre ordinateur, vous pourrez ouvrir une console `ssh` grâce à la commande suivante :
+
+```sh
+ssh debian@beaglebone.local
+```
+
+Le mot de passe par défaut est `temppwd`, pensez à le changer dès que possible.
+
+Il faut maintenant changer le nom de domaine local pour qu'il soit `bassin.local`. Pour cela, éxecutez les commandes :
+
+```sh
+sudo echo bassin > /etc/hostname
+sudo service avahi-daemon restart
+```
+
+À présent, pour vous connecter en `ssh`, il faudra taper :
+
+```sh
+ssh debian@bassin.local
+```
+
+Afin de configurer nginx, ouvrez le fichier `/etc/nginx/sites-enabled/default` et remplacez la ligne `root /var/www` par `root /home/debian/dist`. Enregistrez le fichier.
+
+Vous pouvez maintenant quitter la console `ssh` avec la commande :
+
+```sh
+exit
+```
+
+### Compilation du projet
+
+Clonez et compilez le projet GitHub sur votre ordinateur avec les commandes suivantes, en vous assurant que vous êtes bien sur le même réseau que la Beaglebone :
+
+```sh
+git clone https://github.com/Mousakaa/bassin_seacom.git
+cd bassin_seacom
+make
+```
+
+Tapez le mot de passe de la Beaglebone lorsqu'il vous est demandé.
+
+Vous pouvez à présent rouvrir une console `ssh` pour démarrer le backend :
+
+```sh
+ssh debian@bassin.local
+```
+
+Tapez le mot de passe.
+
+```sh
+sudo ./backend &
+exit
+```
+
+### Accès à l'interface
+
+Vous pouvez à présent vous connecter à l'interface depuis votre navigateur internet, en tapant `bassin.local` dans la barre d'adresse.
