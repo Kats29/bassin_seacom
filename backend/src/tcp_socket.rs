@@ -97,7 +97,7 @@ fn handle_client() -> std::io::Result<()> {
                     true
                 }
             } {};
-            sleep(Duration::new(1, 0));
+            sleep(Duration::new(0, 500_000));
         }
     }) {
         Ok(jh) => jh,

@@ -20,7 +20,7 @@ impl Display for Doors {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug,strum::EnumIter)]
+#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug, strum::EnumIter)]
 pub enum DriverType {
     EX,
     EY,
@@ -196,6 +196,25 @@ impl Arm {
         ));
     }
 
+    pub fn origin_x(&mut self) {
+        self.position().set_x(
+            if self.is_emitter() { -1417.0 } else { 1417.0 }
+        );
+    }
+
+
+    pub fn origin_y(&mut self) {
+        self.position().set_y(495.0);
+    }
+
+
+    pub fn origin_z(&mut self) {
+        self.position().set_z(0.0);
+    }
+    pub fn origin_theta(&mut self) {
+        self.position().set_theta(0.0);
+    }
+
     pub fn position(self) -> Position {
         return self.position;
     }
@@ -206,6 +225,7 @@ impl Arm {
     pub fn next(self) -> Position {
         return self.next;
     }
+
     pub fn set_next(&mut self, pos: Position) {
         self.next = pos;
     }
@@ -214,11 +234,27 @@ impl Arm {
     pub fn move_next(&mut self) {
         self.position = self.next;
     }
+    pub fn move_next_x(&mut self) {
+        self.position().set_x(self.next.x());
+    }
+
+    pub fn move_next_y(&mut self) {
+        self.position().set_y(self.next.y());
+    }
+
+    pub fn move_next_z(&mut self) {
+        self.position().set_z(self.next.z());
+    }
+
+    pub fn move_next_theta(&mut self) {
+        self.position().set_theta(self.next.theta());
+    }
 
     pub fn is_emitter(self) -> bool {
         return self.is_emitter;
     }
 }
+
 #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
 #[serde(default)]
 pub struct Status {
@@ -283,24 +319,24 @@ impl Status {
         }
     }
 
-    pub fn ne(self,equal : Self) -> bool{
+    pub fn ne(self, equal: Self) -> bool {
         if self.door_left_open() != equal.door_left_open() {
             return true;
         }
-        if self.door_right_open() != equal.door_right_open(){
+        if self.door_right_open() != equal.door_right_open() {
             return true;
         }
 
         if self.bassin_powered() != equal.bassin_powered() {
             return true;
         }
-        if self.bassin_started() != equal.bassin_started(){
+        if self.bassin_started() != equal.bassin_started() {
             return true;
         }
         if self.arr_mom() != equal.arr_mom() {
             return true;
         }
-        if self.arr_mom() != equal.arr_mom(){
+        if self.arr_mom() != equal.arr_mom() {
             return true;
         }
 
@@ -308,13 +344,13 @@ impl Status {
         if self.movement_ex() != equal.movement_ex() {
             return true;
         }
-        if self.movement_ey() != equal.movement_ey(){
+        if self.movement_ey() != equal.movement_ey() {
             return true;
         }
         if self.movement_ez() != equal.movement_ez() {
             return true;
         }
-        if self.movement_et() != equal.movement_et(){
+        if self.movement_et() != equal.movement_et() {
             return true;
         }
 
@@ -322,17 +358,17 @@ impl Status {
         if self.movement_rx() != equal.movement_rx() {
             return true;
         }
-        if self.movement_ry() != equal.movement_ry(){
+        if self.movement_ry() != equal.movement_ry() {
             return true;
         }
         if self.movement_rz() != equal.movement_rz() {
             return true;
         }
-        if self.movement_rt() != equal.movement_rt(){
+        if self.movement_rt() != equal.movement_rt() {
             return true;
         }
 
-        return false
+        return false;
     }
 
     pub fn door_right_open(self) -> bool {

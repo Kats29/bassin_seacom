@@ -238,7 +238,7 @@ impl ArmsBackend {
                 }
             }
             ,
-            match handle_pin_read_error(self.pin_info_ar_urg) {
+            match handle_pin_read_error(self.pin_ordre_ar_urg) {
                 Ok(result) => {
                     if result == 0 {
                         vec_error.push(Err(HardwareError::ArrUrg));
@@ -251,7 +251,22 @@ impl ArmsBackend {
                     vec_error.push(Err(e));
                     false
                 }
-            },
+            } ||
+                match handle_pin_read_error(self.pin_info_ar_urg) {
+                    Ok(result) => {
+                        if result == 0 {
+                            vec_error.push(Err(HardwareError::ArrUrg));
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    Err(e) => {
+                        vec_error.push(Err(e));
+                        false
+                    }
+                }
+            ,
             match handle_pin_read_error(self.pin_ar_mom) {
                 Ok(result) => {
                     if result == 0 {
