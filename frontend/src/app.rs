@@ -1,37 +1,38 @@
-use console_error_panic_hook;
-use console_log;
-use log::{error, info, Level};
-use eframe::egui;
-use egui_extras::install_image_loaders;
-use serde::{Serialize, Deserialize};
-use serde_json;
-use wasm_sockets::{
-    EventClient,
-    Message,
-    ConnectionStatus,
-};
 use std::{
-    panic,
     f32::consts::PI,
+    panic,
 };
-use egui_modal::Modal;
+use std::cell::RefCell;
 use std::ops::Deref;
 use std::sync::Mutex;
-use std::cell::RefCell;
+
+use console_error_panic_hook;
+use console_log;
+use eframe::egui;
 use egui::{
     Ui,
-    Widget
+    Widget,
+};
+use egui_extras::install_image_loaders;
+use egui_modal::Modal;
+use log::{error, info, Level};
+use serde::{Deserialize, Serialize};
+use serde_json;
+use wasm_sockets::{
+    ConnectionStatus,
+    EventClient,
+    Message,
 };
 
 use common::{
     definitions::{
-        Position,
         Arm,
         Command,
         DriverType,
-        Status
+        Position,
+        Status,
     },
-    error::HardwareError
+    error::HardwareError,
 };
 
 pub static ERR_LIST: Mutex<Vec<HardwareError>> = Mutex::new(vec![]);
@@ -43,7 +44,8 @@ pub static STATUS: Mutex<RefCell<Option<Status>>> = Mutex::new(RefCell::new(None
 pub struct TemplateApp {
     left: Arm,
     right: Arm,
-
+    next_e: Position,
+    next_r: Position,
     #[serde(skip)]
     stream: EventClient,
 }
@@ -52,13 +54,13 @@ pub struct TemplateApp {
 impl Default for TemplateApp {
     fn default() -> Self {
         let mut left_arm = Arm::new(true);
-        left_arm.set_next(left_arm.position());
         let mut right_arm = Arm::new(false);
-        right_arm.set_next(right_arm.position());
         let client = Self::connect("ws://bassin.local:3333");
         Self {
             left: left_arm,
             right: right_arm,
+            next_e: left_arm.position(),
+            next_r: left_arm.position(),
             stream: client,
         }
     }
@@ -121,11 +123,9 @@ impl TemplateApp {
                             }
                         }
                     }
-                }
-                else if let Ok(status) = serde_json::from_str::<Status>(mess.as_str()) {
+                } else if let Ok(status) = serde_json::from_str::<Status>(mess.as_str()) {
                     STATUS.lock().unwrap().replace(Some(status));
-                }
-                else {
+                } else {
                     error!("JSON conversion error");
                 }
             })));
@@ -155,7 +155,7 @@ impl TemplateApp {
                         match self.stream.status.borrow().deref() {
                             wasm_sockets::ConnectionStatus::Connected => egui::Color32::GREEN,
                             _ => egui::Color32::RED
-                        }
+                        },
                     );
                 });
                 ui.end_row();
@@ -175,9 +175,9 @@ impl TemplateApp {
                                 } else {
                                     egui::Color32::GREEN
                                 }
-                            },
+                            }
                             None => egui::Color32::GRAY
-                        }
+                        },
                     );
                 });
                 ui.end_row();
@@ -197,13 +197,13 @@ impl TemplateApp {
                                 } else {
                                     egui::Color32::GREEN
                                 }
-                            },
+                            }
                             None => egui::Color32::GRAY
-                        }
+                        },
                     );
                 });
                 ui.end_row();
-                
+
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.label("Bassin alimenté");
                 });
@@ -219,9 +219,9 @@ impl TemplateApp {
                                 } else {
                                     egui::Color32::RED
                                 }
-                            },
+                            }
                             None => egui::Color32::GRAY
-                        }
+                        },
                     );
                 });
                 ui.end_row();
@@ -241,9 +241,9 @@ impl TemplateApp {
                                 } else {
                                     egui::Color32::RED
                                 }
-                            },
+                            }
                             None => egui::Color32::GRAY
-                        }
+                        },
                     );
                 });
                 ui.end_row();
@@ -263,9 +263,9 @@ impl TemplateApp {
                                 } else {
                                     egui::Color32::GREEN
                                 }
-                            },
+                            }
                             None => egui::Color32::GRAY
-                        }
+                        },
                     );
                 });
                 ui.end_row();
@@ -285,13 +285,13 @@ impl TemplateApp {
                                 } else {
                                     egui::Color32::GREEN
                                 }
-                            },
+                            }
                             None => egui::Color32::GRAY
-                        }
+                        },
                     );
                 });
                 ui.end_row();
-        });
+            });
     }
 
     /// Defines the look of the left and right side panels
@@ -305,24 +305,29 @@ impl TemplateApp {
         ui.separator();
         ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| ui.menu_button("Commandes", |ui| {
             if ui.button("Go").clicked() {
-                self.send(Command::Go(if is_emitter { DriverType::E } else { DriverType::R }, self.left, self.right));
+                self.send(Command::Go(if is_emitter { DriverType::E } else { DriverType::R }, match self.left.next() {
+                    Some(pos) =>
+                        pos,
+                    None => self.left.position()
+                }, match self.right.next() {
+                    Some(pos) => pos,
+                    None => self.right.position()
+                }));
                 if is_emitter {
                     self.left
-                }
-                else {
+                } else {
                     self.right
                 }
-                .move_next();
+                    .move_next();
             }
             if ui.button("Origine").clicked() {
                 self.send(Command::Zero(if is_emitter { DriverType::E } else { DriverType::R }));
                 if is_emitter {
                     self.left
-                }
-                else {
+                } else {
                     self.right
                 }
-                .origin();
+                    .origin();
             }
             if ui.button("Reset").clicked() {
                 self.send(Command::Reset(if is_emitter { DriverType::E } else { DriverType::R }));
@@ -334,32 +339,37 @@ impl TemplateApp {
             .num_columns(3)
             .show(ui, |ui| {
                 let mut next = match is_emitter {
-                    true => self.left.next(),
-                    false => self.right.next()
+                    true => self.next_e,
+                    false => self.next_r
                 };
 
                 let mut val = next.x();
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.menu_button("X", |ui| {
                         if ui.button("Go").clicked() {
-                            self.send(Command::Go(if is_emitter { DriverType::EX } else { DriverType::RX }, self.left, self.right));
+                            self.send(Command::Go(if is_emitter { DriverType::EX } else { DriverType::RX }, match self.left.next() {
+                                Some(pos) =>
+                                    pos,
+                                None => self.left.position()
+                            }, match self.right.next() {
+                                Some(pos) => pos,
+                                None => self.right.position()
+                            }));
                             if is_emitter {
                                 self.left
-                            }
-                            else {
+                            } else {
                                 self.right
                             }
-                            .move_next_x();
+                                .move_next_x();
                         }
                         if ui.button("Origine").clicked() {
                             self.send(Command::Zero(if is_emitter { DriverType::EX } else { DriverType::RX }));
                             if is_emitter {
                                 self.left
-                            }
-                            else {
+                            } else {
                                 self.right
                             }
-                            .origin_x();
+                                .origin_x();
                         }
                         if ui.button("Reset").clicked() {
                             self.send(Command::Reset(if is_emitter { DriverType::EX } else { DriverType::RX }));
@@ -368,10 +378,10 @@ impl TemplateApp {
                 });
                 ui.add(egui::DragValue::new(&mut val)
                     .clamp_range(
-                    match is_emitter {
-                        true => -1417.0..=-70.0,
-                        false => 70.0..=1417.0
-                    })
+                        match is_emitter {
+                            true => -1417.0..=-70.0,
+                            false => 70.0..=1417.0
+                        })
                     .suffix(" mm")
                 );
                 next.set_x(val);
@@ -384,17 +394,17 @@ impl TemplateApp {
                         match STATUS.lock().unwrap().borrow().as_ref() {
                             Some(status) => {
                                 if if is_emitter {
-                                        status.movement_ex()
-                                    } else {
-                                        status.movement_rx()
+                                    status.movement_ex()
+                                } else {
+                                    status.movement_rx()
                                 } {
                                     egui::Color32::RED
                                 } else {
                                     egui::Color32::GREEN
                                 }
-                            },
+                            }
                             None => egui::Color32::GRAY
-                        }
+                        },
                     );
                 });
 
@@ -404,24 +414,29 @@ impl TemplateApp {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.menu_button("Y", |ui| {
                         if ui.button("Go").clicked() {
-                            self.send(Command::Go(if is_emitter { DriverType::EY } else { DriverType::RY }, self.left, self.right));
+                            self.send(Command::Go(if is_emitter { DriverType::EY } else { DriverType::RY }, match self.left.next() {
+                                Some(pos) =>
+                                    pos,
+                                None => self.left.position()
+                            }, match self.right.next() {
+                                Some(pos) => pos,
+                                None => self.right.position()
+                            }));
                             if is_emitter {
                                 self.left
-                            }
-                            else {
+                            } else {
                                 self.right
                             }
-                            .move_next_y();
+                                .move_next_y();
                         }
                         if ui.button("Origine").clicked() {
                             self.send(Command::Zero(if is_emitter { DriverType::EY } else { DriverType::RY }));
                             if is_emitter {
                                 self.left
-                            }
-                            else {
+                            } else {
                                 self.right
                             }
-                            .origin_y();
+                                .origin_y();
                         }
                         if ui.button("Reset").clicked() {
                             self.send(Command::Reset(if is_emitter { DriverType::EY } else { DriverType::RY }));
@@ -429,7 +444,7 @@ impl TemplateApp {
                     });
                 });
                 ui.add(egui::DragValue::new(&mut val)
-                .clamp_range(-495.0..=495.0)
+                    .clamp_range(-495.0..=495.0)
                     .suffix(" mm")
                 );
                 next.set_y(val);
@@ -442,17 +457,17 @@ impl TemplateApp {
                         match STATUS.lock().unwrap().borrow().as_ref() {
                             Some(status) => {
                                 if if is_emitter {
-                                        status.movement_ey()
-                                    } else {
-                                        status.movement_ry()
+                                    status.movement_ey()
+                                } else {
+                                    status.movement_ry()
                                 } {
                                     egui::Color32::RED
                                 } else {
                                     egui::Color32::GREEN
                                 }
-                            },
+                            }
                             None => egui::Color32::GRAY
-                        }
+                        },
                     );
                 });
 
@@ -462,24 +477,29 @@ impl TemplateApp {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.menu_button("Z", |ui| {
                         if ui.button("Go").clicked() {
-                            self.send(Command::Go(if is_emitter { DriverType::EZ } else { DriverType::RZ }, self.left, self.right));
+                            self.send(Command::Go(if is_emitter { DriverType::EZ } else { DriverType::RZ }, match self.left.next() {
+                                Some(pos) =>
+                                    pos,
+                                None => self.left.position()
+                            }, match self.right.next() {
+                                Some(pos) => pos,
+                                None => self.right.position()
+                            }));
                             if is_emitter {
                                 self.left
-                            }
-                            else {
+                            } else {
                                 self.right
                             }
-                            .move_next_z();
+                                .move_next_z();
                         }
                         if ui.button("Origine").clicked() {
                             self.send(Command::Zero(if is_emitter { DriverType::EZ } else { DriverType::RZ }));
                             if is_emitter {
                                 self.left
-                            }
-                            else {
+                            } else {
                                 self.right
                             }
-                            .origin_z();
+                                .origin_z();
                         }
                         if ui.button("Reset").clicked() {
                             self.send(Command::Reset(if is_emitter { DriverType::EZ } else { DriverType::RZ }));
@@ -500,17 +520,17 @@ impl TemplateApp {
                         match STATUS.lock().unwrap().borrow().as_ref() {
                             Some(status) => {
                                 if if is_emitter {
-                                        status.movement_ez()
-                                    } else {
-                                        status.movement_rz()
+                                    status.movement_ez()
+                                } else {
+                                    status.movement_rz()
                                 } {
                                     egui::Color32::RED
                                 } else {
                                     egui::Color32::GREEN
                                 }
-                            },
+                            }
                             None => egui::Color32::GRAY
-                        }
+                        },
                     );
                 });
 
@@ -520,24 +540,29 @@ impl TemplateApp {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.menu_button("θ", |ui| {
                         if ui.button("Go").clicked() {
-                            self.send(Command::Go(if is_emitter { DriverType::ETHETA } else { DriverType::RTHETA }, self.left, self.right));
+                            self.send(Command::Go(if is_emitter { DriverType::ETHETA } else { DriverType::RTHETA }, match self.left.next() {
+                                Some(pos) =>
+                                    pos,
+                                None => self.left.position()
+                            }, match self.right.next() {
+                                Some(pos) => pos,
+                                None => self.right.position()
+                            }));
                             if is_emitter {
                                 self.left
-                            }
-                            else {
+                            } else {
                                 self.right
                             }
-                            .move_next_theta();
+                                .move_next_theta();
                         }
                         if ui.button("Origine").clicked() {
                             self.send(Command::Zero(if is_emitter { DriverType::ETHETA } else { DriverType::RTHETA }));
                             if is_emitter {
                                 self.left
-                            }
-                            else {
+                            } else {
                                 self.right
                             }
-                            .origin_theta();
+                                .origin_theta();
                         }
                         if ui.button("Reset").clicked() {
                             self.send(Command::Reset(if is_emitter { DriverType::ETHETA } else { DriverType::RTHETA }));
@@ -558,32 +583,32 @@ impl TemplateApp {
                         match STATUS.lock().unwrap().borrow().as_ref() {
                             Some(status) => {
                                 if if is_emitter {
-                                        status.movement_et()
-                                    } else {
-                                        status.movement_rt()
+                                    status.movement_et()
+                                } else {
+                                    status.movement_rt()
                                 } {
                                     egui::Color32::RED
                                 } else {
                                     egui::Color32::GREEN
                                 }
-                            },
+                            }
                             None => egui::Color32::GRAY
-                        }
+                        },
                     );
                 });
 
                 ui.end_row();
 
                 match is_emitter {
-                    true => self.left.set_next(next),
+                    true => self.next_e.set_pos(next),
                     false => self.right.set_next(next)
                 }
-            }
-        );
+            },
+            );
     }
 
     /// Defines the look of the main visual part of the UI
-    pub fn main_view(&mut self, ui: &mut egui::Ui,ctx : &egui::Context) {
+    pub fn main_view(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         let width = (ui.available_width() / 2.0 - 10.0)
             .min((ui.available_height() - 220.0) * 0.85);
         let used_width = width * (1.0 - 70.0 / 1417.0);
@@ -616,7 +641,6 @@ impl TemplateApp {
                             };
                         });
                     });
-
                 }
                 modal.open();
 
@@ -681,6 +705,12 @@ impl TemplateApp {
             self.right
         };
 
+        let mut next_pos_pos = if is_left {
+            self.next_e
+        } else {
+            self.next_r
+        }
+
         let rounding = if is_up {
             egui::Rounding::same(5.0)
         } else {
@@ -701,16 +731,16 @@ impl TemplateApp {
                 // Current position
                 let pos = ui.min_rect().min + egui::vec2(if is_left { 25.0 } else { 5.0 }, 25.0) + egui::vec2(
                     (arm.position().x() + if is_left { 1417.0 } else { -70.0 }) * width / 1347.0,
-                    if is_up { 
-                        -(arm.position().y() - 495.0) * height / 990.0 
-                    } else { 
-                        (arm.position().z() - 1.0) * (height / 680.0) 
-                    }
+                    if is_up {
+                        -(arm.position().y() - 495.0) * height / 990.0
+                    } else {
+                        (arm.position().z() - 1.0) * (height / 680.0)
+                    },
                 );
 
                 let rect = egui::Rect::from_two_pos(
                     pos - egui::vec2(15.0, 24.0),
-                    pos + egui::vec2(15.0, 6.0)
+                    pos + egui::vec2(15.0, 6.0),
                 );
 
                 egui::Image::new(
@@ -719,25 +749,19 @@ impl TemplateApp {
                     .max_size(egui::vec2(30.0, 30.0))
                     .rotate(
                         if is_up {
-                            if is_left {
-                                self.left.position().theta() * PI / 180.0 + PI / 2.0
-                            } else {
-                                self.right.position().theta() * PI / 180.0 - PI / 2.0
-                            }
+                            arm.position().theta() * PI / 180.0 + if is_left { PI / 2.0 } else { -PI / 2.0 }
                         } else {
-                            if is_left {
-                                if self.left.position().theta().abs() < 90.0 {
-                                    PI / 2.0
-                                } else {
-                                    -PI / 2.0
-                                }
+                            (if arm.position().theta().abs() < 90.0 {
+                                PI / 2.0
                             } else {
-                                if arm.position().theta().abs() < 90.0 {
-                                    -PI / 2.0
+                                -PI / 2.0
+                            })
+                            *
+                                (if is_left {
+                                    1.0
                                 } else {
-                                    PI / 2.0
-                                }
-                            }
+                                    -1.0
+                                })
                         },
                         egui::vec2(0.5, 0.8),
                     )
@@ -745,22 +769,22 @@ impl TemplateApp {
 
                 // Next position
                 let next_pos = ui.min_rect().min + egui::vec2(if is_left { 25.0 } else { 5.0 }, 25.0) + egui::vec2(
-                    (arm.next().x() + if is_left { 1417.0 } else { -70.0 }) * width / 1347.0,
+                    (next_pos_pos.x() + if is_left { 1417.0 } else { -70.0 }) * width / 1347.0,
                     if is_up {
-                        -(arm.next().y() - 495.0) * height / 990.0 
-                    } else { 
-                        (arm.next().z() - 1.0) * (height / 680.0) 
-                    }
+                        -(next_pos_pos.y() - 495.0) * height / 990.0
+                    } else {
+                        (next_pos_pos.z() - 1.0) * (height / 680.0)
+                    },
                 );
-                
+
                 let next_rect_small = egui::Rect::from_two_pos(
                     next_pos - egui::vec2(5.0, 5.0),
-                    next_pos + egui::vec2(5.0, 5.0)
+                    next_pos + egui::vec2(5.0, 5.0),
                 );
 
                 let next_rect = egui::Rect::from_two_pos(
                     next_pos - egui::vec2(15.0, 24.0),
-                    next_pos + egui::vec2(15.0, 6.0)
+                    next_pos + egui::vec2(15.0, 6.0),
                 );
 
                 let area = ui.allocate_rect(next_rect_small, egui::Sense::drag());
@@ -810,9 +834,9 @@ impl TemplateApp {
 
                         arm.set_next(
                             Position::new(
-                                arm.next().x(),
-                                arm.next().y(),
-                                arm.next().z(),
+                                next_pos.x(),
+                                next_pos.y(),
+                                next_pos.z(),
                                 new_angle,
                             )
                         );
@@ -832,26 +856,16 @@ impl TemplateApp {
                     ))
                     .rotate(
                         if is_up {
-                            if is_left {
-                                self.left.next().theta() * PI / 180.0 + PI / 2.0
-                            } else {
-                                self.right.next().theta() * PI / 180.0 - PI / 2.0
-                            }
+                            next_pos_pos.theta() * PI / 180.0 + (PI / 2.0 * if is_left { 1.0 } else { -1.0 })
                         } else {
-                            if is_left {
-                                if self.left.next().theta().abs() < 90.0 {
-                                    PI / 2.0
-                                } else {
-                                    -PI / 2.0
-                                }
+                            (if next_pos_pos.theta().abs() < 90.0 {
+                                PI / 2.0
                             } else {
-                                if self.right.next().theta().abs() < 90.0 {
-                                    -PI / 2.0
-                                } else {
-                                    PI / 2.0
-                                }
-                            }
-                        },
+                                -PI / 2.0
+                            })
+                            * (if is_left { 1.0 } else { -1.0 })
+                        }
+                        ,
                         egui::vec2(0.5, 0.8),
                     )
                     .paint_at(ui, next_rect);
@@ -865,46 +879,51 @@ impl TemplateApp {
 
                     if pix_pos.x <= 0.0 {
                         pix_pos.x = 0.0;
-                    }
-                    else if pix_pos.x >= width {
+                    } else if pix_pos.x >= width {
                         pix_pos.x = width;
                     }
 
                     if pix_pos.y <= 0.0 {
                         pix_pos.y = 0.0;
-                    }
-                    else if pix_pos.y >= height {
+                    } else if pix_pos.y >= height {
                         pix_pos.y = height;
                     }
 
-                    arm.set_next(
+                    next_pos_pos =
                         if is_up {
                             Position::new(
                                 pix_pos.x * 1347.0 / width + if is_left { -1417.0 } else { 70.0 },
                                 -pix_pos.y * 990.0 / height + 495.0,
-                                arm.next().z(),
-                                arm.next().theta(),
+                                next_pos_pos.z(),
+                                next_pos_pos.theta(),
                             )
                         } else {
                             Position::new(
                                 pix_pos.x * (1347.0 / width) + if is_left { -1417.0 } else { 70.0 },
-                                arm.next().y(),
+                                next_pos_pos.y(),
                                 pix_pos.y * (680.0 / height),
-                                arm.next().theta(),
+                                next_pos_pos.theta(),
                             )
-                        });
+                        };
                     if is_left {
-                        self.left = arm;
+                        self.next_e = next_pos_pos;
                     } else {
-                        self.right = arm;
+                        self.next_r = next_pos_pos;
                     }
                 }
             })
     }
 
     pub fn send(&mut self, data: Command) {
-        // let data = Command::Go(DriverType::ALL,self.left, self.right);
-
+        /* let data = Command::Go(DriverType::ALL, match self.left.next() {
+                                Some(pos) =>
+                                    pos,
+                                None => self.left.position()
+                            }, match self.right.next() {
+                                Some(pos) => pos,
+                                None => self.right.position()
+                            });
+*/
         let msg = serde_json::to_string(&data)
             .expect("JSON conversion error");
 
@@ -921,7 +940,14 @@ impl TemplateApp {
     pub fn move_next(&mut self) {
         self.left.move_next();
         self.right.move_next();
-        self.send(Command::Go(DriverType::EY, self.left, self.right));
+        self.send(Command::Go(DriverType::EY, match self.left.next() {
+            Some(pos) =>
+                pos,
+            None => self.left.position()
+        }, match self.right.next() {
+            Some(pos) => pos,
+            None => self.right.position()
+        }));
     }
 
     pub fn reset(&mut self) {
@@ -936,8 +962,7 @@ impl TemplateApp {
     pub fn arr_urg(&mut self, state: bool) {
         if state {
             self.send(Command::ArrUrg);
-        }
-        else {
+        } else {
             self.send(Command::StopArrUrg);
         }
     }
@@ -951,7 +976,6 @@ impl eframe::App for TemplateApp {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-
         /*while *self.stream.status.borrow().deref() == ConnectionStatus::Disconnected || *self.stream.status.borrow().deref() == ConnectionStatus::Error{
             self.stream = crate::app::TemplateApp::connect("ws::/beaglebone.local:3333");
         }*/
@@ -1015,8 +1039,7 @@ impl eframe::App for TemplateApp {
                                 if ui.button("Arrêter").clicked() {
                                     self.stop();
                                 }
-                            }
-                            else {
+                            } else {
                                 if ui.button("Démarrer").clicked() {
                                     self.start();
                                 }
@@ -1030,13 +1053,12 @@ impl eframe::App for TemplateApp {
                                 self.arr_urg(false);
                                 self.reset();
                             }
-                        }
-                        else {
+                        } else {
                             if ui.button("Arrêt d'urgence").clicked() {
                                 self.arr_urg(true);
                             }
                         }
-                    },
+                    }
                     None => {
                         ui.add_enabled(false, egui::Button::new("Alimentation"));
                         ui.add_enabled(false, egui::Button::new("Arrêt d'urgence"));
@@ -1051,7 +1073,7 @@ impl eframe::App for TemplateApp {
             });
             ui.add_space(10.0);
 
-            self.main_view(ui,ctx);
+            self.main_view(ui, ctx);
 
             ui.add_space(10.0);
         });

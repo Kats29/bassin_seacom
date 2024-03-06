@@ -56,7 +56,7 @@ impl Display for DriverType {
 
 #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
 pub enum Command {
-    Go(DriverType, Arm, Arm),
+    Go(DriverType, Position, Position),
     Reset(DriverType),
     Zero(DriverType),
     ArrUrg,
@@ -90,6 +90,10 @@ impl Default for Position {
 impl Position {
     pub fn new(x: f32, y: f32, z: f32, theta: f32) -> Self {
         Self { x, y, z, theta }
+    }
+
+    pub fn set_pos(&mut self,pos: Self){
+        *self = pos;
     }
 
     pub fn x(self) -> f32 {
@@ -161,11 +165,11 @@ impl Position {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Clone, Debug)]
 #[serde(default)]
 pub struct Arm {
     position: Position,
-    next: Position,
+    list_next: Vec<Position>,
     is_emitter: bool,
 
 }
@@ -174,7 +178,7 @@ impl Default for Arm {
     fn default() -> Self {
         Self {
             position: Position::default(),
-            next: Position::default(),
+            list_next: vec![],
             is_emitter: true,
         }
     }
@@ -215,42 +219,63 @@ impl Arm {
         self.position().set_theta(0.0);
     }
 
-    pub fn position(self) -> Position {
+    pub fn position(&self) -> Position {
         return self.position;
     }
     pub fn set_position(&mut self, pos: Position) {
         self.position = pos;
     }
 
-    pub fn next(self) -> Position {
-        return self.next;
+    pub fn has_next(&self) -> bool {
+        !self.list_next.is_empty()
     }
 
-    pub fn set_next(&mut self, pos: Position) {
-        self.next = pos;
+    pub fn next(&self) -> Option<Position> {
+        if self.has_next() {
+            Some(self.list_next[0])
+        }
+        else {
+            None
+        }
+    }
+
+    pub fn add_next(&mut self, pos: Position) {
+        self.list_next.push(pos);
     }
 
     /// Moves the arm from its current position to the next one
     pub fn move_next(&mut self) {
-        self.position = self.next;
+        self.move_next_x();
+        self.move_next_y();
+        self.move_next_z();
+        self.move_next_theta();
+        self.list_next.pop();
     }
     pub fn move_next_x(&mut self) {
-        self.position().set_x(self.next.x());
+        if self.has_next() {
+            self.position().set_x(self.list_next[0].x());
+        }
     }
 
     pub fn move_next_y(&mut self) {
-        self.position().set_y(self.next.y());
+        if self.has_next() {
+            self.position().set_y(self.list_next[0].y());
+        }
     }
 
     pub fn move_next_z(&mut self) {
-        self.position().set_z(self.next.z());
+        if self.has_next() {
+            self.position().set_z(self.list_next[0].z());
+        }
     }
 
     pub fn move_next_theta(&mut self) {
-        self.position().set_theta(self.next.theta());
+        if self.has_next() {
+            self.position().set_theta(self.list_next[0].theta());
+        }
     }
 
-    pub fn is_emitter(self) -> bool {
+    pub fn is_emitter(&self) -> bool {
         return self.is_emitter;
     }
 }
