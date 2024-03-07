@@ -21,7 +21,7 @@ impl Display for Doors {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug, strum::EnumIter)]
+#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug, strum::EnumIter,PartialEq)]
 pub enum DriverType {
     EX,
     EY,
@@ -199,7 +199,7 @@ impl Arm {
         return arm;
     }
     pub fn origin(&mut self) {
-        self.set_position(Position::new(
+        self.list_next.push_front(Position::new(
             if self.is_emitter() { -1417.0 } else { 1417.0 },
             495.0,
             0.0,
@@ -208,22 +208,28 @@ impl Arm {
     }
 
     pub fn origin_x(&mut self) {
-        self.position.set_x(
-            if self.is_emitter() { -1417.0 } else { 1417.0 }
-        );
+        let mut new_pos = self.position();
+        new_pos.set_x(if self.is_emitter() { -1417.0 } else { 1417.0 });
+        self.list_next.push_front(new_pos);
     }
 
 
     pub fn origin_y(&mut self) {
-        self.position.set_y(495.0);
+        let mut new_pos = self.position();
+        new_pos.set_y(495.0);
+        self.list_next.push_front(new_pos);
     }
 
 
     pub fn origin_z(&mut self) {
-        self.position.set_z(0.0);
+        let mut new_pos = self.position();
+        new_pos.set_z(0.0);
+        self.list_next.push_front(new_pos);
     }
     pub fn origin_theta(&mut self) {
-        self.position.set_theta(0.0);
+        let mut new_pos = self.position();
+        new_pos.set_theta(0.0);
+        self.list_next.push_front(new_pos);
     }
 
     pub fn position(&self) -> Position {

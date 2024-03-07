@@ -28,10 +28,15 @@ use common::{
         Position,
         Status,
     },
-    error::HardwareError,
+    error::HardwareError::{
+        self,
+        *,
+        I2cSetSlave,
+    },
 };
 
 pub static ERR_LIST: Mutex<Vec<HardwareError>> = Mutex::new(vec![]);
+pub static DRIVER_USED: Mutex<Vec<DriverType>> = Mutex::new(vec![]);
 pub static STATUS: Mutex<RefCell<Option<Status>>> = Mutex::new(RefCell::new(None));
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -42,6 +47,7 @@ pub struct TemplateApp {
     right: Arm,
     next_e: Position,
     next_r: Position,
+
     #[serde(skip)]
     stream: EventClient,
 }
@@ -67,7 +73,7 @@ impl TemplateApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
-        
+
         // Load previous app state (if any).
         // Note that you must enable the `persistence` feature for this to work.
         if let Some(storage) = cc.storage {
@@ -113,6 +119,20 @@ impl TemplateApp {
                                 info!("Aucun problème rencontré");
                             }
                             Err(e) => {
+                                match e {
+                                    I2cSetSlave(_, dt) |
+                                    I2cRead(dt, _) |
+                                    I2cWrite(dt, _) |
+                                    BadI2cResponse(dt, _, _) |
+                                    MovmentNotFinished(dt) => {
+                                        for (i, dt2) in DRIVER_USED.lock().unwrap().iter().enumerate() {
+                                            if *dt2 == dt {
+                                                DRIVER_USED.lock().unwrap().remove(i);
+                                            }
+                                        }
+                                    }
+                                    _ => {}
+                                }
                                 ERR_LIST.lock().unwrap().push(e);
                                 errors_string += format!("\n{}", e).as_str();
                                 info!("{}", e);
@@ -317,7 +337,7 @@ impl TemplateApp {
                     }
                 }
                 if ui.button("Origine").clicked() {
-                    self.send(Command::Zero(if is_emitter { DriverType::E } else { DriverType::R }));
+                    self.origin(if is_emitter { DriverType::E } else { DriverType::R });
                     if is_emitter {
                         self.left.origin();
                     } else {
@@ -624,14 +644,14 @@ impl TemplateApp {
 
         ui.add_space(10.0);
 
-        let mut next = match is_emitter {
+        let next = match is_emitter {
             true => self.left.list_next(),
             false => self.right.list_next(),
         };
 
 
         for (i, pos) in next.iter().enumerate() {
-            let mut a = ui.label(format!("{} : {:?}", i + 1, pos));
+            let a = ui.label(format!("{} : {:?}", i + 1, pos));
             if a.hovered() {
                 a.clone().highlight();
             }
@@ -644,8 +664,8 @@ impl TemplateApp {
                 }
                 if ui.button("Modifier").clicked() {
                     match is_emitter {
-                        true => self.left.replace_in_list(i,self.next_e),
-                        false => self.right.replace_in_list(i,self.next_r),
+                        true => self.left.replace_in_list(i, self.next_e),
+                        false => self.right.replace_in_list(i, self.next_r),
                     }
                 }
             });
@@ -656,13 +676,10 @@ impl TemplateApp {
     pub fn main_view(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         ui.vertical_centered(|ui|
             {
-        let width = (ui.available_width() / 2.0 - 45.0)
-            .min((ui.available_height() - 150.0) * 1417.0 / 990.0 / 2.0);
-        let used_width = width * (1.0 - 70.0 / 1417.0);
-        let height = width * 990.0 / 1417.0;
-        
-        ui.label(format!("{}, {:?}", width, ui.available_size()));
-
+                let width = (ui.available_width() / 2.0 - 10.0)
+                    .min((ui.available_height() - 220.0) * 0.85);
+                let used_width = width * (1.0 - 70.0 / 1417.0);
+                let height = width * 990.0 / 1417.0;
                 let modal = Modal::new(ctx, "dialog_modal");
                 if ERR_LIST.lock().unwrap().is_empty() == false {
                     let mut errors_string = "".to_string();
@@ -697,7 +714,7 @@ impl TemplateApp {
                     .inner_margin(egui::Margin::same(10.0))
                     .outer_margin({
                         let mut margin = egui::Margin::ZERO;
-                        margin.left = (ui.available_width() / 2.0 - width - 45.0);
+                        margin.left = ui.available_width() / 2.0 - width - 45.0;
                         margin
                     })
                     .fill(egui::Color32::LIGHT_BLUE)
@@ -726,7 +743,7 @@ impl TemplateApp {
                     .inner_margin(egui::Margin::same(10.0))
                     .outer_margin({
                         let mut margin = egui::Margin::ZERO;
-                        margin.left = (ui.available_width() / 2.0 - width - 45.0);
+                        margin.left = (ui.available_width() / 2.0 - width - 45.0) / 1.4;
                         margin
                     })
                     .fill(egui::Color32::LIGHT_BLUE)
@@ -924,10 +941,10 @@ impl TemplateApp {
                             0,
                             0,
                             0,
-                            100
-                        )
+                            100,
+                        ),
                     );
-                    
+
                     ui.painter().line_segment(
                         [prev_pos, list_pos],
                         egui::Stroke::new(
@@ -936,11 +953,11 @@ impl TemplateApp {
                                 0,
                                 0,
                                 0,
-                                100
-                            )
-                        )
+                                100,
+                            ),
+                        ),
                     );
-                    
+
                     prev_pos = list_pos;
                 }
             })
@@ -953,15 +970,74 @@ impl TemplateApp {
         self.stream.send_string(msg.as_str()).unwrap();
     }
 
-    pub fn origin(&mut self) {
-        self.send(Command::Zero(DriverType::EY));
+    pub fn origin(&mut self, dt: DriverType) {
+        self.send(Command::Zero(dt));
 
-        self.left.origin();
-        self.right.origin();
+        match dt {
+            DriverType::E => {
+                self.left.origin();
+                DRIVER_USED.lock().unwrap().push(DriverType::EX);
+                DRIVER_USED.lock().unwrap().push(DriverType::EY);
+                DRIVER_USED.lock().unwrap().push(DriverType::EZ);
+                DRIVER_USED.lock().unwrap().push(DriverType::ETHETA);
+            }
+            DriverType::R => {
+                self.right.origin();
+                DRIVER_USED.lock().unwrap().push(DriverType::RX);
+                DRIVER_USED.lock().unwrap().push(DriverType::RY);
+                DRIVER_USED.lock().unwrap().push(DriverType::RZ);
+                DRIVER_USED.lock().unwrap().push(DriverType::RTHETA);
+            }
+            DriverType::ALL => {
+                self.right.origin();
+                self.left.origin();
+                DRIVER_USED.lock().unwrap().push(DriverType::EX);
+                DRIVER_USED.lock().unwrap().push(DriverType::EY);
+                DRIVER_USED.lock().unwrap().push(DriverType::EZ);
+                DRIVER_USED.lock().unwrap().push(DriverType::ETHETA);
+
+                DRIVER_USED.lock().unwrap().push(DriverType::RX);
+                DRIVER_USED.lock().unwrap().push(DriverType::RY);
+                DRIVER_USED.lock().unwrap().push(DriverType::RZ);
+                DRIVER_USED.lock().unwrap().push(DriverType::RTHETA);
+            }
+            DriverType::EX => {
+                self.left.origin_x();
+                DRIVER_USED.lock().unwrap().push(dt);
+            }
+            DriverType::EY => {
+                self.left.origin_y();
+                DRIVER_USED.lock().unwrap().push(dt);
+            }
+            DriverType::EZ => {
+                self.left.origin_z();
+                DRIVER_USED.lock().unwrap().push(dt);
+            }
+            DriverType::ETHETA => {
+                self.left.origin_theta();
+                DRIVER_USED.lock().unwrap().push(dt);
+            }
+            DriverType::RX => {
+                self.right.origin_x();
+                DRIVER_USED.lock().unwrap().push(dt);
+            }
+            DriverType::RY => {
+                self.right.origin_y();
+                DRIVER_USED.lock().unwrap().push(dt);
+            }
+            DriverType::RZ => {
+                self.right.origin_z();
+                DRIVER_USED.lock().unwrap().push(dt);
+            }
+            DriverType::RTHETA => {
+                self.right.origin_theta();
+                DRIVER_USED.lock().unwrap().push(dt);
+            }
+        }
     }
 
-    pub fn move_next(&mut self) {
-        self.send(Command::Go(DriverType::EY, match self.left.next() {
+    pub fn move_next(&mut self, dt: DriverType) {
+        self.send(Command::Go(dt, match self.left.next() {
             Some(pos) =>
                 pos,
             None => self.left.position()
@@ -969,17 +1045,38 @@ impl TemplateApp {
             Some(pos) => pos,
             None => self.right.position()
         }));
-        debug!("list new pos E {:?}",self.left.list_next());
-        debug!("position E {:?}",self.left.position());
-        debug!("position R {:?}",self.right.position());
-        self.left.move_next();
-        self.right.move_next();
-        debug!("new pos E {:?}",self.left.position());
-        debug!("new pos R {:?}",self.right.position());
+        match dt {
+            DriverType::E => {
+                DRIVER_USED.lock().unwrap().push(DriverType::EX);
+                DRIVER_USED.lock().unwrap().push(DriverType::EY);
+                DRIVER_USED.lock().unwrap().push(DriverType::EZ);
+                DRIVER_USED.lock().unwrap().push(DriverType::ETHETA);
+            }
+            DriverType::R => {
+                DRIVER_USED.lock().unwrap().push(DriverType::RX);
+                DRIVER_USED.lock().unwrap().push(DriverType::RY);
+                DRIVER_USED.lock().unwrap().push(DriverType::RZ);
+                DRIVER_USED.lock().unwrap().push(DriverType::RTHETA);
+            }
+            DriverType::ALL => {
+                DRIVER_USED.lock().unwrap().push(DriverType::EX);
+                DRIVER_USED.lock().unwrap().push(DriverType::EY);
+                DRIVER_USED.lock().unwrap().push(DriverType::EZ);
+                DRIVER_USED.lock().unwrap().push(DriverType::ETHETA);
+
+                DRIVER_USED.lock().unwrap().push(DriverType::RX);
+                DRIVER_USED.lock().unwrap().push(DriverType::RY);
+                DRIVER_USED.lock().unwrap().push(DriverType::RZ);
+                DRIVER_USED.lock().unwrap().push(DriverType::RTHETA);
+            }
+            _ => {
+                DRIVER_USED.lock().unwrap().push(dt);
+            }
+        }
     }
 
-    pub fn reset(&mut self) {
-        self.send(Command::Reset(DriverType::EY));
+    pub fn reset(&mut self, dt: DriverType) {
+        self.send(Command::Reset(dt));
     }
     pub fn start(&mut self) {
         self.send(Command::Start);
@@ -1079,13 +1176,13 @@ impl eframe::App for TemplateApp {
                                 }
                             }
                             if ui.button("Reset").clicked() {
-                                self.reset();
+                                self.reset(DriverType::ALL);
                             }
                         });
                         if status.arr_urg() {
                             if ui.button("Fin arrêt d'urgence").clicked() {
                                 self.arr_urg(false);
-                                self.reset();
+                                self.reset(DriverType::ALL);
                             }
                         } else {
                             if ui.button("Arrêt d'urgence").clicked() {
@@ -1099,10 +1196,10 @@ impl eframe::App for TemplateApp {
                     }
                 }
                 if ui.button("Origine").clicked() {
-                    self.origin();
+                    self.origin(DriverType::ALL);
                 }
                 if ui.button("Mouvement Suivant").clicked() {
-                    self.move_next();
+                    self.move_next(DriverType::ALL);
                 }
                 ui.label(format!("{}", ui.available_width()));
             });
@@ -1112,6 +1209,66 @@ impl eframe::App for TemplateApp {
 
             ui.add_space(10.0);
         });
+
+        for (i, dt) in DRIVER_USED.lock().unwrap().iter().enumerate() {
+            match STATUS.lock().unwrap().borrow().as_ref() {
+                Some(status) => {
+                    match dt {
+                        DriverType::EX => {
+                            if !status.movement_ex() {
+                                self.left.move_next_x();
+                                DRIVER_USED.lock().unwrap().remove(i);
+                            }
+                        }
+                        DriverType::EY => {
+                            if !status.movement_ey() {
+                                self.left.move_next_y();
+                                DRIVER_USED.lock().unwrap().remove(i);
+                            }
+                        }
+                        DriverType::EZ => {
+                            if !status.movement_ez() {
+                                self.left.move_next_z();
+                                DRIVER_USED.lock().unwrap().remove(i);
+                            }
+                        }
+                        DriverType::ETHETA => {
+                            if !status.movement_et() {
+                                self.left.move_next_theta();
+                                DRIVER_USED.lock().unwrap().remove(i);
+                            }
+                        }
+
+                        DriverType::RX => {
+                            if !status.movement_rx() {
+                                self.right.move_next_x();
+                                DRIVER_USED.lock().unwrap().remove(i);
+                            }
+                        }
+                        DriverType::RY => {
+                            if !status.movement_ry() {
+                                self.right.move_next_y();
+                                DRIVER_USED.lock().unwrap().remove(i);
+                            }
+                        }
+                        DriverType::RZ => {
+                            if !status.movement_rz() {
+                                self.right.move_next_z();
+                                DRIVER_USED.lock().unwrap().remove(i);
+                            }
+                        }
+                        DriverType::RTHETA => {
+                            if !status.movement_rt() {
+                                self.right.move_next_theta();
+                                DRIVER_USED.lock().unwrap().remove(i);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                None => {}
+            }
+        }
 
         ctx.request_repaint();
     }
