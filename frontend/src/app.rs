@@ -935,7 +935,7 @@ impl TemplateApp {
                 let mut prev_pos = pos;
 
                 // Position list
-                for pos in arm.list_next() {
+                for (i, pos) in arm.list_next().iter().enumerate() {
                     let list_pos = ui.min_rect().min + egui::vec2(if is_left { 25.0 } else { 5.0 }, 25.0) + egui::vec2(
                         (pos.x() + if is_left { 1417.0 } else { -70.0 }) * width / 1347.0,
                         if is_up {
@@ -949,7 +949,7 @@ impl TemplateApp {
                         list_pos,
                         2.5,
                         egui::Color32::from_rgba_premultiplied(
-                            0,
+                            if i == 0 && !DRIVER_USED.lock().unwrap().is_empty() { 128 } else { 0 },
                             0,
                             0,
                             100,
@@ -961,7 +961,7 @@ impl TemplateApp {
                         egui::Stroke::new(
                             1.0,
                             egui::Color32::from_rgba_premultiplied(
-                                0,
+                                if i == 0 && !DRIVER_USED.lock().unwrap().is_empty() { 128 } else { 0 },
                                 0,
                                 0,
                                 100,
