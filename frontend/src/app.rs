@@ -67,7 +67,7 @@ impl TemplateApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
-
+        
         // Load previous app state (if any).
         // Note that you must enable the `persistence` feature for this to work.
         if let Some(storage) = cc.storage {
@@ -901,6 +901,46 @@ impl TemplateApp {
                         self.next_r = next_pos_pos;
                     }
                 }
+
+                let mut prev_pos = pos;
+
+                // Position list
+                for pos in arm.list_next() {
+                    let list_pos = ui.min_rect().min + egui::vec2(if is_left { 25.0 } else { 5.0 }, 25.0) + egui::vec2(
+                        (pos.x() + if is_left { 1417.0 } else { -70.0 }) * width / 1347.0,
+                        if is_up {
+                            -(pos.y() - 495.0) * height / 990.0
+                        } else {
+                            (pos.z()) * (height / 680.0)
+                        },
+                    );
+
+                    ui.painter().circle_filled(
+                        list_pos,
+                        2.5,
+                        egui::Color32::from_rgba_premultiplied(
+                            0,
+                            0,
+                            0,
+                            100
+                        )
+                    );
+                    
+                    ui.painter().line_segment(
+                        [prev_pos, list_pos],
+                        egui::Stroke::new(
+                            1.0,
+                            egui::Color32::from_rgba_premultiplied(
+                                0,
+                                0,
+                                0,
+                                100
+                            )
+                        )
+                    );
+                    
+                    prev_pos = list_pos;
+                }
             })
     }
 
@@ -967,7 +1007,6 @@ impl eframe::App for TemplateApp {
         }*/
 
         install_image_loaders(ctx);
-
 
         // Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
         // For inspiration and more examples, go to https://emilk.github.io/egui
