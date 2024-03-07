@@ -52,7 +52,7 @@ pub struct TemplateApp {
     #[serde(skip)]
     stream: EventClient,
     #[serde(skip)]
-    file_dialog: FileDialog
+    file_dialog: Option<FileDialog>
 }
 
 
@@ -67,7 +67,7 @@ impl Default for TemplateApp {
             next_e: left_arm.position(),
             next_r: left_arm.position(),
             stream: client,
-            file_dialog: FileDialog::new()
+            file_dialog: None
         }
     }
 }
@@ -1210,7 +1210,7 @@ impl eframe::App for TemplateApp {
                     self.origin(DriverType::ALL);
                 }
                 if ui.button("Go").clicked() {
-                    self.move_next();
+                    self.move_next(DriverType::ALL);
                 }
             });
             ui.add_space(10.0);
