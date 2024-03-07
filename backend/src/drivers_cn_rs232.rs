@@ -77,14 +77,20 @@ impl DriversCnRs232{
         pin = Pin::new(103);
         handle_pin_export_error(pin)?;
         handle_pin_direction_error(pin,Direction::In)?;
-        //driver.configuration()?;
+        driver.configuration()?;
         Ok(driver)
     }
 
     pub fn configuration(&mut self) -> Result<(),HardwareError>{
         for dt in DriverType::iter(){
             match dt {
-                DriverType::EX |
+                DriverType::EX => {
+                    handle_i2c_set_slave_error(self.i2c_handler.as_mut().unwrap(), get_i2c_addr_value(dt) as u16, dt)?;
+                    handle_i2c_write_error(self.i2c_handler.as_mut().unwrap(), 0x01,0x40 , dt)?;
+                    handle_i2c_write_error(self.i2c_handler.as_mut().unwrap(), 0x0A,0x08 , dt)?;
+                    handle_i2c_write_error(self.i2c_handler.as_mut().unwrap(), 0x0B,0x03 , dt)?;
+                    handle_i2c_write_error(self.i2c_handler.as_mut().unwrap(), 0x0C,0x01 , dt)?;
+                },
                 DriverType::EY |
                 DriverType::EZ |
                 DriverType::ETHETA |
@@ -92,12 +98,8 @@ impl DriversCnRs232{
                 DriverType::RY |
                 DriverType::RZ |
                 DriverType::RTHETA => {
-                    handle_i2c_set_slave_error(self.i2c_handler.as_mut().unwrap(), get_i2c_addr_value(dt) as u16, dt)?;
-                    handle_i2c_write_error(self.i2c_handler.as_mut().unwrap(), 0x01,0x40 , dt)?;
-                    handle_i2c_write_error(self.i2c_handler.as_mut().unwrap(), 0x0A,0x08 , dt)?;
-                    handle_i2c_write_error(self.i2c_handler.as_mut().unwrap(), 0x0B,0x03 , dt)?;
-                    handle_i2c_write_error(self.i2c_handler.as_mut().unwrap(), 0x0C,0x01 , dt)?;
-                }
+
+                },
                 _ => {}
             }
         }

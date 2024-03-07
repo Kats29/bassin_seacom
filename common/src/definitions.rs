@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::fmt::{Display, Formatter};
 
 #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
@@ -165,11 +166,13 @@ impl Position {
     }
 }
 
+
+
 #[derive(serde::Deserialize, serde::Serialize, Clone, Debug)]
 #[serde(default)]
 pub struct Arm {
     position: Position,
-    list_next: Vec<Position>,
+    list_next: VecDeque<Position>,
     is_emitter: bool,
 
 }
@@ -178,7 +181,7 @@ impl Default for Arm {
     fn default() -> Self {
         Self {
             position: Position::default(),
-            list_next: vec![],
+            list_next: VecDeque::new(),
             is_emitter: true,
         }
     }
@@ -201,22 +204,22 @@ impl Arm {
     }
 
     pub fn origin_x(&mut self) {
-        self.position().set_x(
+        self.position.set_x(
             if self.is_emitter() { -1417.0 } else { 1417.0 }
         );
     }
 
 
     pub fn origin_y(&mut self) {
-        self.position().set_y(495.0);
+        self.position.set_y(495.0);
     }
 
 
     pub fn origin_z(&mut self) {
-        self.position().set_z(0.0);
+        self.position.set_z(0.0);
     }
     pub fn origin_theta(&mut self) {
-        self.position().set_theta(0.0);
+        self.position.set_theta(0.0);
     }
 
     pub fn position(&self) -> Position {
@@ -230,6 +233,19 @@ impl Arm {
         !self.list_next.is_empty()
     }
 
+    pub fn del_list(&mut self){
+        self.list_next = VecDeque::new();
+    }
+
+    pub fn del_in_list(&mut self,index: usize){
+        self.list_next.remove(index);
+        return;
+    }
+
+    pub fn replace_in_list(&mut self,index:usize,pos: Position){
+        self.list_next.get_mut(index).unwrap().set_pos(pos);
+    }
+
     pub fn next(&self) -> Option<Position> {
         if self.has_next() {
             Some(self.list_next[0])
@@ -239,39 +255,42 @@ impl Arm {
         }
     }
 
+    pub fn list_next(&self) -> VecDeque<Position>{
+        return self.list_next.clone();
+    }
+
     pub fn add_next(&mut self, pos: Position) {
-        self.list_next.push(pos);
+        self.list_next.push_back(pos);
     }
 
     /// Moves the arm from its current position to the next one
     pub fn move_next(&mut self) {
-        self.move_next_x();
-        self.move_next_y();
-        self.move_next_z();
-        self.move_next_theta();
-        self.list_next.pop();
+        if self.has_next(){
+            let pos = self.list_next.pop_front().unwrap();
+            self.set_position(pos);
+        }
     }
     pub fn move_next_x(&mut self) {
         if self.has_next() {
-            self.position().set_x(self.list_next[0].x());
+            self.position.set_x(self.list_next[0].x());
         }
     }
 
     pub fn move_next_y(&mut self) {
         if self.has_next() {
-            self.position().set_y(self.list_next[0].y());
+            self.position.set_y(self.list_next[0].y());
         }
     }
 
     pub fn move_next_z(&mut self) {
         if self.has_next() {
-            self.position().set_z(self.list_next[0].z());
+            self.position.set_z(self.list_next[0].z());
         }
     }
 
     pub fn move_next_theta(&mut self) {
         if self.has_next() {
-            self.position().set_theta(self.list_next[0].theta());
+            self.position.set_theta(self.list_next[0].theta());
         }
     }
 

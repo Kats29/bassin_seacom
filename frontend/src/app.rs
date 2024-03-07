@@ -9,17 +9,13 @@ use std::sync::Mutex;
 use console_error_panic_hook;
 use console_log;
 use eframe::egui;
-use egui::{
-    Ui,
-    Widget,
-};
+use egui::Ui;
 use egui_extras::install_image_loaders;
 use egui_modal::Modal;
-use log::{error, info, Level};
+use log::{debug, error, info, Level};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use wasm_sockets::{
-    ConnectionStatus,
     EventClient,
     Message,
 };
@@ -53,12 +49,12 @@ pub struct TemplateApp {
 
 impl Default for TemplateApp {
     fn default() -> Self {
-        let mut left_arm = Arm::new(true);
-        let mut right_arm = Arm::new(false);
+        let left_arm = Arm::new(true);
+        let right_arm = Arm::new(false);
         let client = Self::connect("ws://bassin.local:3333");
         Self {
-            left: left_arm,
-            right: right_arm,
+            left: left_arm.clone(),
+            right: right_arm.clone(),
             next_e: left_arm.position(),
             next_r: left_arm.position(),
             stream: client,
@@ -303,36 +299,46 @@ impl TemplateApp {
             });
         });
         ui.separator();
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| ui.menu_button("Commandes", |ui| {
-            if ui.button("Go").clicked() {
-                self.send(Command::Go(if is_emitter { DriverType::E } else { DriverType::R }, match self.left.next() {
-                    Some(pos) =>
-                        pos,
-                    None => self.left.position()
-                }, match self.right.next() {
-                    Some(pos) => pos,
-                    None => self.right.position()
-                }));
-                if is_emitter {
-                    self.left
-                } else {
-                    self.right
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
+            ui.menu_button("Commandes", |ui| {
+                if ui.button("Go").clicked() {
+                    self.send(Command::Go(if is_emitter { DriverType::E } else { DriverType::R }, match self.left.next() {
+                        Some(pos) =>
+                            pos,
+                        None => self.left.position()
+                    }, match self.right.next() {
+                        Some(pos) => pos,
+                        None => self.right.position()
+                    }));
+                    if is_emitter {
+                        self.left.move_next();
+                    } else {
+                        self.right.move_next();
+                    }
                 }
-                    .move_next();
-            }
-            if ui.button("Origine").clicked() {
-                self.send(Command::Zero(if is_emitter { DriverType::E } else { DriverType::R }));
-                if is_emitter {
-                    self.left
-                } else {
-                    self.right
+                if ui.button("Origine").clicked() {
+                    self.send(Command::Zero(if is_emitter { DriverType::E } else { DriverType::R }));
+                    if is_emitter {
+                        self.left.origin();
+                    } else {
+                        self.right.origin();
+                    }
                 }
-                    .origin();
+                if ui.button("Reset").clicked() {
+                    self.send(Command::Reset(if is_emitter { DriverType::E } else { DriverType::R }));
+                }
+            });
+            if ui.button("Nouveau Mouvement").clicked() {
+                if is_emitter {
+                    self.left.add_next(self.next_e);
+                    debug!("{:?}",self.left.next())
+                } else {
+                    self.right.add_next(self.next_r);
+                    debug!("{:?}",self.right.next())
+                }
             }
-            if ui.button("Reset").clicked() {
-                self.send(Command::Reset(if is_emitter { DriverType::E } else { DriverType::R }));
-            }
-        }));
+        });
+
         ui.add_space(10.0);
         egui::Grid::new(if is_emitter { "emitter_panel" } else { "receiver_panel" })
             .min_col_width(20.0)
@@ -356,20 +362,18 @@ impl TemplateApp {
                                 None => self.right.position()
                             }));
                             if is_emitter {
-                                self.left
+                                self.left.move_next_x();
                             } else {
-                                self.right
+                                self.right.move_next_y();
                             }
-                                .move_next_x();
                         }
                         if ui.button("Origine").clicked() {
                             self.send(Command::Zero(if is_emitter { DriverType::EX } else { DriverType::RX }));
                             if is_emitter {
-                                self.left
+                                self.left.origin_x();
                             } else {
-                                self.right
+                                self.right.origin_x();
                             }
-                                .origin_x();
                         }
                         if ui.button("Reset").clicked() {
                             self.send(Command::Reset(if is_emitter { DriverType::EX } else { DriverType::RX }));
@@ -423,20 +427,18 @@ impl TemplateApp {
                                 None => self.right.position()
                             }));
                             if is_emitter {
-                                self.left
+                                self.left.move_next_y();
                             } else {
-                                self.right
+                                self.right.move_next_y();
                             }
-                                .move_next_y();
                         }
                         if ui.button("Origine").clicked() {
                             self.send(Command::Zero(if is_emitter { DriverType::EY } else { DriverType::RY }));
                             if is_emitter {
-                                self.left
+                                self.left.origin_y();
                             } else {
-                                self.right
+                                self.right.origin_y();
                             }
-                                .origin_y();
                         }
                         if ui.button("Reset").clicked() {
                             self.send(Command::Reset(if is_emitter { DriverType::EY } else { DriverType::RY }));
@@ -486,20 +488,18 @@ impl TemplateApp {
                                 None => self.right.position()
                             }));
                             if is_emitter {
-                                self.left
+                                self.left.move_next_z();
                             } else {
-                                self.right
+                                self.right.move_next_z();
                             }
-                                .move_next_z();
                         }
                         if ui.button("Origine").clicked() {
                             self.send(Command::Zero(if is_emitter { DriverType::EZ } else { DriverType::RZ }));
                             if is_emitter {
-                                self.left
+                                self.left.origin_z();
                             } else {
-                                self.right
+                                self.right.origin_z();
                             }
-                                .origin_z();
                         }
                         if ui.button("Reset").clicked() {
                             self.send(Command::Reset(if is_emitter { DriverType::EZ } else { DriverType::RZ }));
@@ -549,20 +549,18 @@ impl TemplateApp {
                                 None => self.right.position()
                             }));
                             if is_emitter {
-                                self.left
+                                self.left.move_next_theta();
                             } else {
-                                self.right
+                                self.right.move_next_theta();
                             }
-                                .move_next_theta();
                         }
                         if ui.button("Origine").clicked() {
                             self.send(Command::Zero(if is_emitter { DriverType::ETHETA } else { DriverType::RTHETA }));
                             if is_emitter {
-                                self.left
+                                self.left.origin_theta();
                             } else {
-                                self.right
+                                self.right.origin_theta();
                             }
-                                .origin_theta();
                         }
                         if ui.button("Reset").clicked() {
                             self.send(Command::Reset(if is_emitter { DriverType::ETHETA } else { DriverType::RTHETA }));
@@ -601,10 +599,57 @@ impl TemplateApp {
 
                 match is_emitter {
                     true => self.next_e.set_pos(next),
-                    false => self.right.set_next(next)
+                    false => self.next_r.set_pos(next)
                 }
             },
             );
+    }
+
+
+    pub fn other_side_panel(&mut self, ui: &mut egui::Ui, is_emitter: bool) {
+        ui.vertical_centered(|ui| {
+            ui.heading(match is_emitter {
+                true => "Liste des positions du bras émetteur",
+                false => "Liste des positions du bras récepteur"
+            });
+        });
+        ui.separator();
+        if ui.button("Tout suprimmer").clicked() {
+            if is_emitter {
+                self.left.del_list();
+            } else {
+                self.right.del_list();
+            }
+        }
+
+        ui.add_space(10.0);
+
+        let mut next = match is_emitter {
+            true => self.left.list_next(),
+            false => self.right.list_next(),
+        };
+
+
+        for (i, pos) in next.iter().enumerate() {
+            let mut a = ui.label(format!("{} : {:?}", i + 1, pos));
+            if a.hovered() {
+                a.clone().highlight();
+            }
+            a.context_menu(|ui| {
+                if ui.button("Supprimer").clicked() {
+                    match is_emitter {
+                        true => self.left.del_in_list(i),
+                        false => self.right.del_in_list(i),
+                    }
+                }
+                if ui.button("Modifier").clicked() {
+                    match is_emitter {
+                        true => self.left.replace_in_list(i,self.next_e),
+                        false => self.right.replace_in_list(i,self.next_r),
+                    }
+                }
+            });
+        }
     }
 
     /// Defines the look of the main visual part of the UI
@@ -699,17 +744,17 @@ impl TemplateApp {
     }
 
     fn get_new_frame(&mut self, is_left: bool, is_up: bool, ui: &mut Ui, height: f32, width: f32) -> egui::InnerResponse<()> {
-        let mut arm = if is_left {
-            self.left
+        let arm = if is_left {
+            &self.left
         } else {
-            self.right
+            &self.right
         };
 
         let mut next_pos_pos = if is_left {
             self.next_e
         } else {
             self.next_r
-        }
+        };
 
         let rounding = if is_up {
             egui::Rounding::same(5.0)
@@ -756,7 +801,7 @@ impl TemplateApp {
                             } else {
                                 -PI / 2.0
                             })
-                            *
+                                *
                                 (if is_left {
                                     1.0
                                 } else {
@@ -773,7 +818,7 @@ impl TemplateApp {
                     if is_up {
                         -(next_pos_pos.y() - 495.0) * height / 990.0
                     } else {
-                        (next_pos_pos.z() - 1.0) * (height / 680.0)
+                        (next_pos_pos.z()) * (height / 680.0)
                     },
                 );
 
@@ -788,61 +833,6 @@ impl TemplateApp {
                 );
 
                 let area = ui.allocate_rect(next_rect_small, egui::Sense::drag());
-
-                /*
-                if is_up {
-                    let angle = if is_left {
-                        self.left.next().theta() * PI / 180.0
-                    } else {
-                        self.right.next().theta() * PI / 180.0 + PI
-                    };
-
-                    let angle_rect = egui::Rect::from_two_pos(
-                        next_pos + 30.0 * egui::vec2(angle.cos(), angle.sin()) - egui::vec2(5.0, 5.0),
-                        next_pos + 30.0 * egui::vec2(angle.cos(), angle.sin()) + egui::vec2(5.0, 5.0)
-                    );
-
-                    let angle_area = ui.allocate_rect(angle_rect, egui::Sense::click_and_drag());
-
-                    let painter: &mut egui::Painter = ui.painter();
-                    painter.set_clip_rect(ui.min_rect());
-                    painter.circle_filled(
-                        next_pos + 30.0 * egui::vec2(angle.cos(), angle.sin()),
-                        5.0,
-                        egui::Color32::from_rgba_premultiplied(
-                            0,
-                            0,
-                            0,
-                            if angle_area.hovered() { 100 } else { 50 }
-                        )
-                    );
-
-                    if angle_area.dragged() {
-                        let pix_pos = angle_area.rect.center()
-                            - next_pos
-                            + angle_area.drag_delta();
-
-                        let mut new_angle = (f32::atan2(pix_pos.y, pix_pos.x) + if is_left { 0.0 } else { -PI }) * 180.0 / PI;
-
-                        if new_angle < -180.0 {
-                            new_angle = -180.0;
-                        }
-
-                        if new_angle >= 180.0 {
-                            new_angle = 180.0;
-                        }
-
-                        arm.set_next(
-                            Position::new(
-                                next_pos.x(),
-                                next_pos.y(),
-                                next_pos.z(),
-                                new_angle,
-                            )
-                        );
-                    }
-                }
-                */
 
                 egui::Image::new(
                     egui::include_image!("../assets/emitter.png")
@@ -863,7 +853,7 @@ impl TemplateApp {
                             } else {
                                 -PI / 2.0
                             })
-                            * (if is_left { 1.0 } else { -1.0 })
+                                * (if is_left { 1.0 } else { -1.0 })
                         }
                         ,
                         egui::vec2(0.5, 0.8),
@@ -915,15 +905,6 @@ impl TemplateApp {
     }
 
     pub fn send(&mut self, data: Command) {
-        /* let data = Command::Go(DriverType::ALL, match self.left.next() {
-                                Some(pos) =>
-                                    pos,
-                                None => self.left.position()
-                            }, match self.right.next() {
-                                Some(pos) => pos,
-                                None => self.right.position()
-                            });
-*/
         let msg = serde_json::to_string(&data)
             .expect("JSON conversion error");
 
@@ -938,8 +919,6 @@ impl TemplateApp {
     }
 
     pub fn move_next(&mut self) {
-        self.left.move_next();
-        self.right.move_next();
         self.send(Command::Go(DriverType::EY, match self.left.next() {
             Some(pos) =>
                 pos,
@@ -948,6 +927,13 @@ impl TemplateApp {
             Some(pos) => pos,
             None => self.right.position()
         }));
+        debug!("list new pos E {:?}",self.left.list_next());
+        debug!("position E {:?}",self.left.position());
+        debug!("position R {:?}",self.right.position());
+        self.left.move_next();
+        self.right.move_next();
+        debug!("new pos E {:?}",self.left.position());
+        debug!("new pos R {:?}",self.right.position());
     }
 
     pub fn reset(&mut self) {
@@ -1020,13 +1006,21 @@ impl eframe::App for TemplateApp {
                 ui.separator();
             });
 
-        /*
+
         egui::SidePanel::right("right")
-            .resizable(false)
-            .show(ctx, |ui|
-                self.side_panel(ui, false),
-            );
-        */
+            .resizable(true)
+            .show(ctx, |ui| {
+                ui.add_space(5.0);
+                self.other_side_panel(ui, true);
+                ui.add_space(10.0);
+                ui.separator();
+                ui.separator();
+                self.other_side_panel(ui, false);
+                ui.add_space(10.0);
+                ui.separator();
+                ui.separator();
+            });
+
 
         egui::CentralPanel::default().show(ctx, |ui| {
 
@@ -1067,7 +1061,7 @@ impl eframe::App for TemplateApp {
                 if ui.button("Origine").clicked() {
                     self.origin();
                 }
-                if ui.button("Go").clicked() {
+                if ui.button("Mouvement Suivant").clicked() {
                     self.move_next();
                 }
             });
