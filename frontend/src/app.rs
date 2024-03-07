@@ -19,6 +19,7 @@ use wasm_sockets::{
     EventClient,
     Message,
 };
+use egui_file::FileDialog;
 
 use common::{
     definitions::{
@@ -50,6 +51,8 @@ pub struct TemplateApp {
 
     #[serde(skip)]
     stream: EventClient,
+    #[serde(skip)]
+    file_dialog: FileDialog
 }
 
 
@@ -64,6 +67,7 @@ impl Default for TemplateApp {
             next_e: left_arm.position(),
             next_r: left_arm.position(),
             stream: client,
+            file_dialog: FileDialog::new()
         }
     }
 }
@@ -348,7 +352,7 @@ impl TemplateApp {
                     self.send(Command::Reset(if is_emitter { DriverType::E } else { DriverType::R }));
                 }
             });
-            if ui.button("Nouveau Mouvement").clicked() {
+            if ui.button("Ajouter").clicked() {
                 if is_emitter {
                     self.left.add_next(self.next_e);
                     debug!("{:?}",self.left.next())
@@ -650,36 +654,43 @@ impl TemplateApp {
         };
 
 
-        for (i, pos) in next.iter().enumerate() {
-            let a = ui.label(format!("{} : {:?}", i + 1, pos));
-            if a.hovered() {
-                a.clone().highlight();
-            }
-            a.context_menu(|ui| {
-                if ui.button("Supprimer").clicked() {
-                    match is_emitter {
-                        true => self.left.del_in_list(i),
-                        false => self.right.del_in_list(i),
+        egui::ScrollArea::vertical()
+            .id_source(is_emitter)
+            .max_height(if is_emitter { ui.available_height() / 2.0 - 50.0 } else { ui.available_height() })
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                for (i, pos) in next.iter().enumerate() {
+                    let mut a = ui.label(format!("{}\t\t{}", i + 1, pos));
+                    if a.hovered() {
+                        a.clone().highlight();
                     }
-                }
-                if ui.button("Modifier").clicked() {
-                    match is_emitter {
-                        true => self.left.replace_in_list(i, self.next_e),
-                        false => self.right.replace_in_list(i, self.next_r),
-                    }
+                    a.context_menu(|ui| {
+                        if ui.button("Supprimer").clicked() {
+                            match is_emitter {
+                                true => self.left.del_in_list(i),
+                                false => self.right.del_in_list(i),
+                            }
+                        }
+                        if ui.button("Modifier").clicked() {
+                            match is_emitter {
+                                true => self.left.replace_in_list(i,self.next_e),
+                                false => self.right.replace_in_list(i,self.next_r),
+                            }
+                        }
+                    });
                 }
             });
-        }
     }
 
     /// Defines the look of the main visual part of the UI
     pub fn main_view(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
         ui.vertical_centered(|ui|
             {
-                let width = (ui.available_width() / 2.0 - 10.0)
-                    .min((ui.available_height() - 220.0) * 0.85);
+                let width = (ui.available_width() / 2.0 - 45.0)
+                    .min((ui.available_height() - 150.0) * 1417.0 / 990.0 / 2.0);
                 let used_width = width * (1.0 - 70.0 / 1417.0);
                 let height = width * 990.0 / 1417.0;
+                
                 let modal = Modal::new(ctx, "dialog_modal");
                 if ERR_LIST.lock().unwrap().is_empty() == false {
                     let mut errors_string = "".to_string();
@@ -963,6 +974,10 @@ impl TemplateApp {
             })
     }
 
+    pub fn download_file(&self) {
+        
+    }
+
     pub fn send(&mut self, data: Command) {
         let msg = serde_json::to_string(&data)
             .expect("JSON conversion error");
@@ -1101,10 +1116,6 @@ impl eframe::App for TemplateApp {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        /*while *self.stream.status.borrow().deref() == ConnectionStatus::Disconnected || *self.stream.status.borrow().deref() == ConnectionStatus::Error{
-            self.stream = crate::app::TemplateApp::connect("ws::/beaglebone.local:3333");
-        }*/
-
         install_image_loaders(ctx);
 
         // Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
@@ -1198,10 +1209,9 @@ impl eframe::App for TemplateApp {
                 if ui.button("Origine").clicked() {
                     self.origin(DriverType::ALL);
                 }
-                if ui.button("Mouvement Suivant").clicked() {
-                    self.move_next(DriverType::ALL);
+                if ui.button("Go").clicked() {
+                    self.move_next();
                 }
-                ui.label(format!("{}", ui.available_width()));
             });
             ui.add_space(10.0);
 
