@@ -726,7 +726,7 @@ impl TemplateApp {
                     .inner_margin(egui::Margin::same(10.0))
                     .outer_margin({
                         let mut margin = egui::Margin::ZERO;
-                        margin.left = (ui.available_width() / 2.0 - width - 45.0) / 1.4;
+                        margin.left = (ui.available_width() / 2.0 - width - 45.0);
                         margin
                     })
                     .fill(egui::Color32::LIGHT_BLUE)
