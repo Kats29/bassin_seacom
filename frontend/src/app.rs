@@ -654,13 +654,15 @@ impl TemplateApp {
 
     /// Defines the look of the main visual part of the UI
     pub fn main_view(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) {
-        let width = (ui.available_width() / 2.0 - 10.0)
-            .min((ui.available_height() - 220.0) * 0.85);
-        let used_width = width * (1.0 - 70.0 / 1417.0);
-        let height = width * 990.0 / 1417.0;
-
         ui.vertical_centered(|ui|
             {
+        let width = (ui.available_width() / 2.0 - 45.0)
+            .min((ui.available_height() - 150.0) * 1417.0 / 990.0 / 2.0);
+        let used_width = width * (1.0 - 70.0 / 1417.0);
+        let height = width * 990.0 / 1417.0;
+        
+        ui.label(format!("{}, {:?}", width, ui.available_size()));
+
                 let modal = Modal::new(ctx, "dialog_modal");
                 if ERR_LIST.lock().unwrap().is_empty() == false {
                     let mut errors_string = "".to_string();
@@ -695,7 +697,7 @@ impl TemplateApp {
                     .inner_margin(egui::Margin::same(10.0))
                     .outer_margin({
                         let mut margin = egui::Margin::ZERO;
-                        margin.left = (ui.available_width() / 2.0 - width - 10.0) / 1.4;
+                        margin.left = (ui.available_width() / 2.0 - width - 45.0);
                         margin
                     })
                     .fill(egui::Color32::LIGHT_BLUE)
@@ -724,7 +726,7 @@ impl TemplateApp {
                     .inner_margin(egui::Margin::same(10.0))
                     .outer_margin({
                         let mut margin = egui::Margin::ZERO;
-                        margin.left = (ui.available_width() / 2.0 - width - 10.0) / 1.4;
+                        margin.left = (ui.available_width() / 2.0 - width - 45.0) / 1.4;
                         margin
                     })
                     .fill(egui::Color32::LIGHT_BLUE)
@@ -1057,7 +1059,6 @@ impl eframe::App for TemplateApp {
                 self.other_side_panel(ui, false);
                 ui.add_space(10.0);
                 ui.separator();
-                ui.separator();
             });
 
 
@@ -1103,6 +1104,7 @@ impl eframe::App for TemplateApp {
                 if ui.button("Mouvement Suivant").clicked() {
                     self.move_next();
                 }
+                ui.label(format!("{}", ui.available_width()));
             });
             ui.add_space(10.0);
 
