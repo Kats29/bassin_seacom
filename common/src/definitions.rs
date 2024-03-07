@@ -166,6 +166,11 @@ impl Position {
     }
 }
 
+impl Display for Position {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f,"{}",format!("X : {:.2}, Y : {:.2} Z : {:.2}, θ : {:.2}",self.x(),self.y(),self.z(),self.theta()))
+    }
+}
 
 
 #[derive(serde::Deserialize, serde::Serialize, Clone, Debug)]
@@ -186,7 +191,6 @@ impl Default for Arm {
         }
     }
 }
-
 impl Arm {
     pub fn new(is_emitter: bool) -> Self {
         let mut arm = Self::default();
