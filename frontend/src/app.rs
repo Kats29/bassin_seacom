@@ -19,7 +19,6 @@ use wasm_sockets::{
     EventClient,
     Message,
 };
-use egui_file::FileDialog;
 
 use common::{
     definitions::{
@@ -37,7 +36,7 @@ use common::{
 };
 
 pub static ERR_LIST: Mutex<Vec<HardwareError>> = Mutex::new(vec![]);
-pub static DRIVER_USED: Mutex<Vec<DriverType>> = Mutex::new(vec![]);
+pub static DRIVER_USED: Mutex<RefCell<Vec<DriverType>>> = Mutex::new( RefCell::new(vec![]));
 pub static STATUS: Mutex<RefCell<Option<Status>>> = Mutex::new(RefCell::new(None));
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -51,8 +50,6 @@ pub struct TemplateApp {
 
     #[serde(skip)]
     stream: EventClient,
-    #[serde(skip)]
-    file_dialog: Option<FileDialog>
 }
 
 
@@ -67,7 +64,6 @@ impl Default for TemplateApp {
             next_e: left_arm.position(),
             next_r: left_arm.position(),
             stream: client,
-            file_dialog: None
         }
     }
 }
@@ -129,9 +125,13 @@ impl TemplateApp {
                                     I2cWrite(dt, _) |
                                     BadI2cResponse(dt, _, _) |
                                     MovmentNotFinished(dt) => {
-                                        for (i, dt2) in DRIVER_USED.lock().unwrap().iter().enumerate() {
-                                            if *dt2 == dt {
-                                                DRIVER_USED.lock().unwrap().remove(i);
+                                        let du = DRIVER_USED.lock().unwrap();
+                                        let mut dum = du.borrow_mut();
+                                        for i in 0..dum.len() {
+                                            let dt2 = dum[i];
+                                            if dt2 == dt {
+                                                dum.remove(i);
+                                                break;
                                             }
                                         }
                                     }
@@ -660,7 +660,7 @@ impl TemplateApp {
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 for (i, pos) in next.iter().enumerate() {
-                    let mut a = ui.label(format!("{}\t\t{}", i + 1, pos));
+                    let a = ui.label(format!("{}\t\t{}", i + 1, pos));
                     if a.hovered() {
                         a.clone().highlight();
                     }
@@ -690,7 +690,7 @@ impl TemplateApp {
                     .min((ui.available_height() - 150.0) * 1417.0 / 990.0 / 2.0);
                 let used_width = width * (1.0 - 70.0 / 1417.0);
                 let height = width * 990.0 / 1417.0;
-                
+
                 let modal = Modal::new(ctx, "dialog_modal");
                 if ERR_LIST.lock().unwrap().is_empty() == false {
                     let mut errors_string = "".to_string();
@@ -949,7 +949,7 @@ impl TemplateApp {
                         list_pos,
                         2.5,
                         egui::Color32::from_rgba_premultiplied(
-                            if i == 0 && !DRIVER_USED.lock().unwrap().is_empty() { 128 } else { 0 },
+                            if i == 0 && !DRIVER_USED.lock().unwrap().borrow().is_empty() { 128 } else { 0 },
                             0,
                             0,
                             100,
@@ -961,7 +961,7 @@ impl TemplateApp {
                         egui::Stroke::new(
                             1.0,
                             egui::Color32::from_rgba_premultiplied(
-                                if i == 0 && !DRIVER_USED.lock().unwrap().is_empty() { 128 } else { 0 },
+                                if i == 0 && !DRIVER_USED.lock().unwrap().borrow().is_empty() { 128 } else { 0 },
                                 0,
                                 0,
                                 100,
@@ -975,7 +975,7 @@ impl TemplateApp {
     }
 
     pub fn download_file(&self) {
-        
+
     }
 
     pub fn send(&mut self, data: Command) {
@@ -987,66 +987,67 @@ impl TemplateApp {
 
     pub fn origin(&mut self, dt: DriverType) {
         self.send(Command::Zero(dt));
-
+        let du = DRIVER_USED.lock().unwrap();
+        let mut dum = du.borrow_mut();
         match dt {
             DriverType::E => {
                 self.left.origin();
-                DRIVER_USED.lock().unwrap().push(DriverType::EX);
-                DRIVER_USED.lock().unwrap().push(DriverType::EY);
-                DRIVER_USED.lock().unwrap().push(DriverType::EZ);
-                DRIVER_USED.lock().unwrap().push(DriverType::ETHETA);
+                dum.push(DriverType::EX);
+                dum.push(DriverType::EY);
+                dum.push(DriverType::EZ);
+                dum.push(DriverType::ETHETA);
             }
             DriverType::R => {
                 self.right.origin();
-                DRIVER_USED.lock().unwrap().push(DriverType::RX);
-                DRIVER_USED.lock().unwrap().push(DriverType::RY);
-                DRIVER_USED.lock().unwrap().push(DriverType::RZ);
-                DRIVER_USED.lock().unwrap().push(DriverType::RTHETA);
+                dum.push(DriverType::RX);
+                dum.push(DriverType::RY);
+                dum.push(DriverType::RZ);
+                dum.push(DriverType::RTHETA);
             }
             DriverType::ALL => {
                 self.right.origin();
                 self.left.origin();
-                DRIVER_USED.lock().unwrap().push(DriverType::EX);
-                DRIVER_USED.lock().unwrap().push(DriverType::EY);
-                DRIVER_USED.lock().unwrap().push(DriverType::EZ);
-                DRIVER_USED.lock().unwrap().push(DriverType::ETHETA);
+                dum.push(DriverType::EX);
+                dum.push(DriverType::EY);
+                dum.push(DriverType::EZ);
+                dum.push(DriverType::ETHETA);
 
-                DRIVER_USED.lock().unwrap().push(DriverType::RX);
-                DRIVER_USED.lock().unwrap().push(DriverType::RY);
-                DRIVER_USED.lock().unwrap().push(DriverType::RZ);
-                DRIVER_USED.lock().unwrap().push(DriverType::RTHETA);
+                dum.push(DriverType::RX);
+                dum.push(DriverType::RY);
+                dum.push(DriverType::RZ);
+                dum.push(DriverType::RTHETA);
             }
             DriverType::EX => {
                 self.left.origin_x();
-                DRIVER_USED.lock().unwrap().push(dt);
+                dum.push(dt);
             }
             DriverType::EY => {
                 self.left.origin_y();
-                DRIVER_USED.lock().unwrap().push(dt);
+                dum.push(dt);
             }
             DriverType::EZ => {
                 self.left.origin_z();
-                DRIVER_USED.lock().unwrap().push(dt);
+                dum.push(dt);
             }
             DriverType::ETHETA => {
                 self.left.origin_theta();
-                DRIVER_USED.lock().unwrap().push(dt);
+                dum.push(dt);
             }
             DriverType::RX => {
                 self.right.origin_x();
-                DRIVER_USED.lock().unwrap().push(dt);
+                dum.push(dt);
             }
             DriverType::RY => {
                 self.right.origin_y();
-                DRIVER_USED.lock().unwrap().push(dt);
+                dum.push(dt);
             }
             DriverType::RZ => {
                 self.right.origin_z();
-                DRIVER_USED.lock().unwrap().push(dt);
+                dum.push(dt);
             }
             DriverType::RTHETA => {
                 self.right.origin_theta();
-                DRIVER_USED.lock().unwrap().push(dt);
+                dum.push(dt);
             }
         }
     }
@@ -1060,32 +1061,34 @@ impl TemplateApp {
             Some(pos) => pos,
             None => self.right.position()
         }));
+        let du = DRIVER_USED.lock().unwrap();
+        let mut dum = du.borrow_mut();
         match dt {
             DriverType::E => {
-                DRIVER_USED.lock().unwrap().push(DriverType::EX);
-                DRIVER_USED.lock().unwrap().push(DriverType::EY);
-                DRIVER_USED.lock().unwrap().push(DriverType::EZ);
-                DRIVER_USED.lock().unwrap().push(DriverType::ETHETA);
+                dum.push(DriverType::EX);
+                dum.push(DriverType::EY);
+                dum.push(DriverType::EZ);
+                dum.push(DriverType::ETHETA);
             }
             DriverType::R => {
-                DRIVER_USED.lock().unwrap().push(DriverType::RX);
-                DRIVER_USED.lock().unwrap().push(DriverType::RY);
-                DRIVER_USED.lock().unwrap().push(DriverType::RZ);
-                DRIVER_USED.lock().unwrap().push(DriverType::RTHETA);
+                dum.push(DriverType::RX);
+                dum.push(DriverType::RY);
+                dum.push(DriverType::RZ);
+                dum.push(DriverType::RTHETA);
             }
             DriverType::ALL => {
-                DRIVER_USED.lock().unwrap().push(DriverType::EX);
-                DRIVER_USED.lock().unwrap().push(DriverType::EY);
-                DRIVER_USED.lock().unwrap().push(DriverType::EZ);
-                DRIVER_USED.lock().unwrap().push(DriverType::ETHETA);
+                dum.push(DriverType::EX);
+                dum.push(DriverType::EY);
+                dum.push(DriverType::EZ);
+                dum.push(DriverType::ETHETA);
 
-                DRIVER_USED.lock().unwrap().push(DriverType::RX);
-                DRIVER_USED.lock().unwrap().push(DriverType::RY);
-                DRIVER_USED.lock().unwrap().push(DriverType::RZ);
-                DRIVER_USED.lock().unwrap().push(DriverType::RTHETA);
+                dum.push(DriverType::RX);
+                dum.push(DriverType::RY);
+                dum.push(DriverType::RZ);
+                dum.push(DriverType::RTHETA);
             }
             _ => {
-                DRIVER_USED.lock().unwrap().push(dt);
+                dum.push(dt);
             }
         }
     }
@@ -1220,63 +1223,92 @@ impl eframe::App for TemplateApp {
             ui.add_space(10.0);
         });
 
-        for (i, dt) in DRIVER_USED.lock().unwrap().iter().enumerate() {
-            match STATUS.lock().unwrap().borrow().as_ref() {
-                Some(status) => {
-                    match dt {
-                        DriverType::EX => {
-                            if !status.movement_ex() {
-                                self.left.move_next_x();
-                                DRIVER_USED.lock().unwrap().remove(i);
-                            }
-                        }
-                        DriverType::EY => {
-                            if !status.movement_ey() {
-                                self.left.move_next_y();
-                                DRIVER_USED.lock().unwrap().remove(i);
-                            }
-                        }
-                        DriverType::EZ => {
-                            if !status.movement_ez() {
-                                self.left.move_next_z();
-                                DRIVER_USED.lock().unwrap().remove(i);
-                            }
-                        }
-                        DriverType::ETHETA => {
-                            if !status.movement_et() {
-                                self.left.move_next_theta();
-                                DRIVER_USED.lock().unwrap().remove(i);
-                            }
-                        }
+        let du  =  DRIVER_USED.lock().unwrap();
 
-                        DriverType::RX => {
-                            if !status.movement_rx() {
-                                self.right.move_next_x();
-                                DRIVER_USED.lock().unwrap().remove(i);
+        let mut dum = du.borrow_mut();
+        let mut i = 0isize;
+        let mut nfini = true;
+        while nfini {
+            i = i+1;
+            if i>=(dum.len() as isize) {
+                nfini = false;
+                break;
+            }
+            else {
+                let dt = dum[i as usize];
+                match STATUS.lock().unwrap().borrow().as_ref() {
+                    Some(status) => {
+                        match dt {
+                            DriverType::EX => {
+                                if !status.movement_ex() {
+                                    self.left.move_next_x();
+                                    dum.remove(i.try_into().unwrap());
+                                    info!("index : {} \n lentgh : {}",i,dum.len());
+                                    i= i-1;
+                                }
                             }
-                        }
-                        DriverType::RY => {
-                            if !status.movement_ry() {
-                                self.right.move_next_y();
-                                DRIVER_USED.lock().unwrap().remove(i);
+                            DriverType::EY => {
+                                if !status.movement_ey() {
+                                    self.left.move_next_y();
+                                    dum.remove(i.try_into().unwrap());
+                                    info!("index : {} \n lentgh : {}",i,dum.len());
+                                    i= i-1;
+                                }
                             }
-                        }
-                        DriverType::RZ => {
-                            if !status.movement_rz() {
-                                self.right.move_next_z();
-                                DRIVER_USED.lock().unwrap().remove(i);
+                            DriverType::EZ => {
+                                if !status.movement_ez() {
+                                    self.left.move_next_z();
+                                    dum.remove(i.try_into().unwrap());
+                                    info!("index : {} \n lentgh : {}",i,dum.len());
+                                    i= i-1;
+                                }
                             }
-                        }
-                        DriverType::RTHETA => {
-                            if !status.movement_rt() {
-                                self.right.move_next_theta();
-                                DRIVER_USED.lock().unwrap().remove(i);
+                            DriverType::ETHETA => {
+                                if !status.movement_et() {
+                                    self.left.move_next_theta();
+                                    dum.remove(i.try_into().unwrap());
+                                    info!("index : {} \n lentgh : {}",i,dum.len());
+                                    i= i-1;
+                                }
                             }
+
+                            DriverType::RX => {
+                                if !status.movement_rx() {
+                                    self.right.move_next_x();
+                                    dum.remove(i.try_into().unwrap());
+                                    info!("index : {} \n lentgh : {}",i,dum.len());
+                                    i= i-1;
+                                }
+                            }
+                            DriverType::RY => {
+                                if !status.movement_ry() {
+                                    self.right.move_next_y();
+                                    dum.remove(i.try_into().unwrap());
+                                    info!("index : {} \n lentgh : {}",i,dum.len());
+                                    i= i-1;
+                                }
+                            }
+                            DriverType::RZ => {
+                                if !status.movement_rz() {
+                                    self.right.move_next_z();
+                                    dum.remove(i.try_into().unwrap());
+                                    info!("index : {} \n lentgh : {}",i,dum.len());
+                                    i= i-1;
+                                }
+                            }
+                            DriverType::RTHETA => {
+                                if !status.movement_rt() {
+                                    self.right.move_next_theta();
+                                    dum.remove(i.try_into().unwrap());
+                                    info!("index : {} \n lentgh : {}",i,dum.len());
+                                    i= i-1;
+                                }
+                            }
+                            _ => {}
                         }
-                        _ => {}
                     }
+                    None => {}
                 }
-                None => {}
             }
         }
 
