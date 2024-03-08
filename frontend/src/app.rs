@@ -19,6 +19,9 @@ use wasm_sockets::{
     EventClient,
     Message,
 };
+use wasm_bindgen_futures;
+use futures::executor::block_on;
+use rfd;
 
 use common::{
     definitions::{
@@ -50,6 +53,11 @@ pub struct TemplateApp {
 
     #[serde(skip)]
     stream: EventClient,
+    #[serde(skip)]
+    file_dialog: (
+        std::sync::mpsc::Sender<(bool, rfd::FileHandle)>,
+        std::sync::mpsc::Receiver<(bool, rfd::FileHandle)>,
+    )
 }
 
 
@@ -64,6 +72,7 @@ impl Default for TemplateApp {
             next_e: left_arm.position(),
             next_r: left_arm.position(),
             stream: client,
+            file_dialog: std::sync::mpsc::channel()
         }
     }
 }
@@ -718,6 +727,8 @@ impl TemplateApp {
                     });
                 }
                 modal.open();
+                
+                self.file_dialog(ctx);
 
                 // Top view
                 ui.heading("Vue de dessus");
@@ -754,7 +765,7 @@ impl TemplateApp {
                     .inner_margin(egui::Margin::same(10.0))
                     .outer_margin({
                         let mut margin = egui::Margin::ZERO;
-                        margin.left = (ui.available_width() / 2.0 - width - 45.0) / 1.4;
+                        margin.left = ui.available_width() / 2.0 - width - 45.0;
                         margin
                     })
                     .fill(egui::Color32::LIGHT_BLUE)
@@ -974,8 +985,26 @@ impl TemplateApp {
             })
     }
 
-    pub fn download_file(&self) {
-
+    pub fn file_dialog(&mut self, ctx: &egui::Context) {
+        loop {
+            match self.file_dialog.1.try_recv() {
+                Ok((true, file)) => { //Save file
+                    let data = serde_json::to_string(&(self.left.clone(), self.right.clone()))
+                        .expect("JSON conversion error");
+                    execute(async move {
+                        file.write(&data.into_bytes()).await.ok();
+                    });
+                },
+                Ok((false, file)) => { //Load file
+                    let data = block_on(file.read());
+                    (self.left, self.right) = serde_json::from_str(&std::str::from_utf8(&data).unwrap())
+                        .unwrap_or((self.left.clone(), self.right.clone()));
+                },
+                Err(_) => {
+                    break;
+                }
+            }
+        }
     }
 
     pub fn send(&mut self, data: Command) {
@@ -1215,6 +1244,40 @@ impl eframe::App for TemplateApp {
                 if ui.button("Go").clicked() {
                     self.move_next(DriverType::ALL);
                 }
+                ui.menu_button("Fichier", |ui| {
+                    if ui.button("Sauvegarder").clicked() {
+                         let task = rfd::AsyncFileDialog::new()
+                            .set_directory("/")
+                            .set_file_name("position_bassin.json")
+                            .save_file();
+
+                        let message_sender = self.file_dialog.0.clone();
+
+                        execute(async move {
+                            let file = task.await;
+
+                            if let Some(file) = file {
+                                message_sender.send((true, file)).ok();
+                            }
+                        });
+                    }
+                    if ui.button("Charger").clicked() {
+                         let task = rfd::AsyncFileDialog::new()
+                            .add_filter("Text files", &["json"])
+                            .set_directory("/")
+                            .pick_file();
+
+                        let message_sender = self.file_dialog.0.clone();
+
+                        execute(async move {
+                            let file = task.await;
+
+                            if let Some(file) = file {
+                                message_sender.send((false, file)).ok();
+                            }
+                        });
+                    }
+                });
             });
             ui.add_space(10.0);
 
@@ -1314,4 +1377,9 @@ impl eframe::App for TemplateApp {
 
         ctx.request_repaint();
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
+    wasm_bindgen_futures::spawn_local(f);
 }
