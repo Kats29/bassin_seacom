@@ -55,8 +55,8 @@ pub struct TemplateApp {
     stream: EventClient,
     #[serde(skip)]
     file_dialog: (
-        std::sync::mpsc::Sender<(bool, rfd::FileHandle)>,
-        std::sync::mpsc::Receiver<(bool, rfd::FileHandle)>,
+        std::sync::mpsc::Sender<String>,
+        std::sync::mpsc::Receiver<String>,
     )
 }
 
@@ -65,7 +65,7 @@ impl Default for TemplateApp {
     fn default() -> Self {
         let left_arm = Arm::new(true);
         let right_arm = Arm::new(false);
-        let client = Self::connect("ws://bassin.local:3333");
+        let client = Self::connect("wss://bassin.local:3333");
         Self {
             left: left_arm.clone(),
             right: right_arm.clone(),
@@ -212,7 +212,7 @@ impl TemplateApp {
                 ui.end_row();
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label("Porte droite");
+                    (bool, rfd::FileHandle(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle))ui.label("Porte droite");
                 });
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let (_, rect) = ui.allocate_space(egui::vec2(10.0, 10.0));
@@ -903,16 +903,8 @@ impl TemplateApp {
     pub fn file_dialog(&mut self, ctx: &egui::Context) {
         loop {
             match self.file_dialog.1.try_recv() {
-                Ok((true, file)) => { //Save file
-                    let data = serde_json::to_string(&(self.left.clone(), self.right.clone()))
-                        .expect("JSON conversion error");
-                    execute(async move {
-                        file.write(&data.into_bytes()).await.ok();
-                    });
-                },
-                Ok((false, file)) => { //Load file
-                    let data = block_on(file.read());
-                    (self.left, self.right) = serde_json::from_str(&std::str::from_utf8(&data).unwrap())
+                Ok(string) => { //Load file
+                    (self.left, self.right) = serde_json::from_str(string.as_str())
                         .unwrap_or((self.left.clone(), self.right.clone()));
                 },
                 Err(_) => {
@@ -1162,24 +1154,23 @@ impl eframe::App for TemplateApp {
                 ui.menu_button("Fichier", |ui| {
                     if ui.button("Sauvegarder").clicked() {
                          let task = rfd::AsyncFileDialog::new()
-                            .set_directory("/")
                             .set_file_name("position_bassin.json")
                             .save_file();
 
-                        let message_sender = self.file_dialog.0.clone();
+                        let data = serde_json::to_string(&(self.left.clone(), self.right.clone()))
+                            .expect("JSON conversion error");
 
                         execute(async move {
                             let file = task.await;
 
                             if let Some(file) = file {
-                                message_sender.send((true, file)).ok();
+                                _ = file.write(data.as_bytes()).await;
                             }
                         });
                     }
                     if ui.button("Charger").clicked() {
                          let task = rfd::AsyncFileDialog::new()
                             .add_filter("Text files", &["json"])
-                            .set_directory("/")
                             .pick_file();
 
                         let message_sender = self.file_dialog.0.clone();
@@ -1188,7 +1179,8 @@ impl eframe::App for TemplateApp {
                             let file = task.await;
 
                             if let Some(file) = file {
-                                message_sender.send((false, file)).ok();
+                                let text = file.read().await;
+                                let _ = message_sender.send(String::from_utf8_lossy(&text).to_string());
                             }
                         });
                     }
