@@ -25,7 +25,7 @@ sudo echo bassin > /etc/hostname
 sudo service avahi-daemon restart
 ```
 
-À présent, pour vous connecter en `ssh, il faudra taper :
+À présent, pour vous connecter en `ssh`, il faudra taper :
 
 ```sh
 ssh debian@bassin.local
