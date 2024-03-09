@@ -25,13 +25,20 @@ sudo echo bassin > /etc/hostname
 sudo service avahi-daemon restart
 ```
 
-À présent, pour vous connecter en `ssh`, il faudra taper :
+À présent, pour vous connecter en `ssh, il faudra taper :
 
 ```sh
 ssh debian@bassin.local
 ```
 
 Afin de configurer nginx, ouvrez le fichier `/etc/nginx/sites-enabled/default` et remplacez la ligne `root /var/www` par `root /home/debian/dist`. Enregistrez le fichier.
+
+Finalement, il faut ouvrir le port 3333 de la Beaglebone pour permettre la connection TCP entre l'interface et le backend :
+
+```sh
+sudo iptables -A INPUT -p tcp --dport 3333 --jump ACCEPT
+sudo iptables-save
+```
 
 Vous pouvez maintenant quitter la console `ssh` avec la commande :
 
@@ -60,9 +67,10 @@ ssh debian@bassin.local
 Tapez le mot de passe.
 
 ```sh
-sudo ./backend &
-exit
+sudo ./backend & exit
 ```
+
+Tapez à nouveau le mot de passe.
 
 ### Accès à l'interface
 
