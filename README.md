@@ -75,3 +75,55 @@ Tapez à nouveau le mot de passe.
 ### Accès à l'interface
 
 Vous pouvez à présent vous connecter à l'interface depuis votre navigateur internet, en tapant `bassin.local` dans la barre d'adresse.
+
+## Utilisation
+
+![Interface de contrôle](interface.gif)
+
+### Apparence et organisation
+
+L'interface est constituée d'une seule vue, qui est séparée en trois zones : une vue centrale, et deux panneaux latéraux. En cas de nécéssité, une fenêtre d'erreur peut également s'ouvrir devant la vue centrale.
+
+#### Vue centrale
+
+La vue centrale représente une visualisation de l'état actuel du bassin, ainsi que des commandes prévues.
+
+Sa partie supérieure montre une vue du dessus en séparant les moitiés droite et gauche du bassin. La même séparation est visible sur la partie inférieure, qui elle montre une vue de côté du bassin (pour visualiser la profondeur).
+
+Les cadres noirs délimitent les zones où chacun des deux bras peut se déplacer, et les symboles <img src="frontend/assets/emitter.png" style="background-color='gray'" width="20"> en noir symbolysent la position actuelle de chaque bras.
+
+#### Panneau gauche
+
+#### Panneau droit
+
+#### Fenêtre d'erreur
+
+### Commandes d'alimentation
+
+#### Allumer le bassin
+
+#### Éteindre le bassin
+
+#### Redémarrage des commandes numériques (RESET)
+
+### Gestion des mouvements
+
+#### Ajouter un mouvement
+
+#### Supprimer un mouvement
+
+#### Modifier un mouvement
+
+### Effectuer un mouvement
+
+#### Commandes générales
+
+#### Commandes par bras
+
+#### Commandes par axe
+
+### Sauvegarde et importation de positions
+
+#### Sauvegarder la configuration
+
+#### Importer une configuration

@@ -1,5 +1,9 @@
+use std::collections::VecDeque;
 use std::fmt::{Display, Formatter};
 
+
+///
+/// Liste des portes du bassin
 #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
 pub enum Doors {
     GaucheBas,
@@ -8,6 +12,7 @@ pub enum Doors {
     DroiteHaut,
 }
 
+/// Implémentation du trait Display pour la structure Doors
 impl Display for Doors {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let s = match self {
@@ -20,7 +25,9 @@ impl Display for Doors {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug, strum::EnumIter)]
+
+/// Liste des drivers du bassin (R correspond aux récepteurs, E aux émetteurs et ALL a tout les drivers)
+#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug, strum::EnumIter,PartialEq)]
 pub enum DriverType {
     EX,
     EY,
@@ -38,25 +45,27 @@ pub enum DriverType {
 impl Display for DriverType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            DriverType::EX => "Driver pour le moteur X émetteur",
-            DriverType::EY => "Driver pour le moteur Y émetteur",
-            DriverType::EZ => "Driver pour le moteur Z émetteur",
-            DriverType::ETHETA => "Driver pour le moteur Théta émetteur",
-            DriverType::RX => "Driver pour le moteur X récepteur",
-            DriverType::RY => "Driver pour le moteur Y récepteur",
-            DriverType::RZ => "Driver pour le moteur Z récepteur",
-            DriverType::RTHETA => "Driver pour le moteur Théta récepteur",
-            DriverType::E => "Drivers pour les moteur émetteur",
-            DriverType::R => "Drivers pour les moteur récepteur",
-            DriverType::ALL => "Drivers pour tous les moteurs"
+            DriverType::EX => "Driver du moteur X émetteur",
+            DriverType::EY => "Driver du moteur Y émetteur",
+            DriverType::EZ => "Driver du moteur Z émetteur",
+            DriverType::ETHETA => "Driver du moteur Théta émetteur",
+            DriverType::RX => "Driver du moteur X récepteur",
+            DriverType::RY => "Driver du moteur Y récepteur",
+            DriverType::RZ => "Driver du moteur Z récepteur",
+            DriverType::RTHETA => "Driver du moteur Théta récepteur",
+            DriverType::E => "Drivers des moteur émetteur",
+            DriverType::R => "Drivers des moteur récepteur",
+            DriverType::ALL => "Drivers de tout les moteurs"
         };
         write!(f, "{}", s)
     }
 }
 
+
+///Liste des Commandes possible
 #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
 pub enum Command {
-    Go(DriverType, Arm, Arm),
+    Go(DriverType, Position, Position),
     Reset(DriverType),
     Zero(DriverType),
     ArrUrg,
@@ -67,6 +76,8 @@ pub enum Command {
     Stop,
 }
 
+
+///Structure sauvegardant la possition de 4 axes, x, y, z et θ
 #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
 #[serde(default)]
 pub struct Position {
@@ -92,6 +103,14 @@ impl Position {
         Self { x, y, z, theta }
     }
 
+
+    ///Modifie la position par la position pos
+    pub fn set_pos(&mut self,pos: Self){
+        *self = pos;
+    }
+
+
+    /// Getter pour x
     pub fn x(self) -> f32 {
         return self.x;
     }
@@ -99,6 +118,7 @@ impl Position {
         self.x = value;
     }
 
+    /// Getter pour y
     pub fn y(self) -> f32 {
         return self.y;
     }
@@ -106,6 +126,7 @@ impl Position {
         self.y = value;
     }
 
+    /// Getter pour z
     pub fn z(self) -> f32 {
         return self.z;
     }
@@ -113,6 +134,7 @@ impl Position {
         self.z = value;
     }
 
+    /// Getter pour x
     pub fn theta(self) -> f32 {
         return self.theta;
     }
@@ -161,11 +183,18 @@ impl Position {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
+impl Display for Position {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f,"{}",format!("X : {:.2}, Y : {:.2} Z : {:.2}, θ : {:.2}",self.x(),self.y(),self.z(),self.theta()))
+    }
+}
+
+
+#[derive(serde::Deserialize, serde::Serialize, Clone, Debug)]
 #[serde(default)]
 pub struct Arm {
     position: Position,
-    next: Position,
+    list_next: VecDeque<Position>,
     is_emitter: bool,
 
 }
@@ -174,12 +203,11 @@ impl Default for Arm {
     fn default() -> Self {
         Self {
             position: Position::default(),
-            next: Position::default(),
+            list_next: VecDeque::new(),
             is_emitter: true,
         }
     }
 }
-
 impl Arm {
     pub fn new(is_emitter: bool) -> Self {
         let mut arm = Self::default();
@@ -188,7 +216,7 @@ impl Arm {
         return arm;
     }
     pub fn origin(&mut self) {
-        self.set_position(Position::new(
+        self.list_next.push_front(Position::new(
             if self.is_emitter() { -1417.0 } else { 1417.0 },
             495.0,
             0.0,
@@ -197,60 +225,103 @@ impl Arm {
     }
 
     pub fn origin_x(&mut self) {
-        self.position().set_x(
-            if self.is_emitter() { -1417.0 } else { 1417.0 }
-        );
+        let mut new_pos = self.position();
+        new_pos.set_x(if self.is_emitter() { -1417.0 } else { 1417.0 });
+        self.list_next.push_front(new_pos);
     }
 
 
     pub fn origin_y(&mut self) {
-        self.position().set_y(495.0);
+        let mut new_pos = self.position();
+        new_pos.set_y(495.0);
+        self.list_next.push_front(new_pos);
     }
 
 
     pub fn origin_z(&mut self) {
-        self.position().set_z(0.0);
+        let mut new_pos = self.position();
+        new_pos.set_z(0.0);
+        self.list_next.push_front(new_pos);
     }
     pub fn origin_theta(&mut self) {
-        self.position().set_theta(0.0);
+        let mut new_pos = self.position();
+        new_pos.set_theta(0.0);
+        self.list_next.push_front(new_pos);
     }
 
-    pub fn position(self) -> Position {
+    pub fn position(&self) -> Position {
         return self.position;
     }
     pub fn set_position(&mut self, pos: Position) {
         self.position = pos;
     }
 
-    pub fn next(self) -> Position {
-        return self.next;
+    pub fn has_next(&self) -> bool {
+        !self.list_next.is_empty()
     }
 
-    pub fn set_next(&mut self, pos: Position) {
-        self.next = pos;
+    pub fn del_list(&mut self){
+        self.list_next = VecDeque::new();
+    }
+
+    pub fn del_in_list(&mut self,index: usize){
+        self.list_next.remove(index);
+        return;
+    }
+
+    pub fn replace_in_list(&mut self,index:usize,pos: Position){
+        self.list_next.get_mut(index).unwrap().set_pos(pos);
+    }
+
+    pub fn next(&self) -> Option<Position> {
+        if self.has_next() {
+            Some(self.list_next[0])
+        }
+        else {
+            None
+        }
+    }
+
+    pub fn list_next(&self) -> VecDeque<Position>{
+        return self.list_next.clone();
+    }
+
+    pub fn add_next(&mut self, pos: Position) {
+        self.list_next.push_back(pos);
     }
 
     /// Moves the arm from its current position to the next one
     pub fn move_next(&mut self) {
-        self.position = self.next;
+        if self.has_next(){
+            let pos = self.list_next.pop_front().unwrap();
+            self.set_position(pos);
+        }
     }
     pub fn move_next_x(&mut self) {
-        self.position().set_x(self.next.x());
+        if self.has_next() {
+            self.position.set_x(self.list_next[0].x());
+        }
     }
 
     pub fn move_next_y(&mut self) {
-        self.position().set_y(self.next.y());
+        if self.has_next() {
+            self.position.set_y(self.list_next[0].y());
+        }
     }
 
     pub fn move_next_z(&mut self) {
-        self.position().set_z(self.next.z());
+        if self.has_next() {
+            self.position.set_z(self.list_next[0].z());
+        }
     }
 
     pub fn move_next_theta(&mut self) {
-        self.position().set_theta(self.next.theta());
+        if self.has_next() {
+            self.position.set_theta(self.list_next[0].theta());
+        }
     }
 
-    pub fn is_emitter(self) -> bool {
+    pub fn is_emitter(&self) -> bool {
         return self.is_emitter;
     }
 }

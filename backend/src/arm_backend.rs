@@ -15,6 +15,7 @@ use common::{
     },
     error::HardwareError,
 };
+use common::definitions::Position;
 
 use crate::driver_cn_pin::DriverCnPin;
 use crate::drivers_cn_rs232::DriversCnRs232;
@@ -360,14 +361,17 @@ impl ArmsBackend {
     }
 
     pub fn update(&mut self, command: Command) -> Result<(), HardwareError> {
-        self.check_status();
         match command {
-            Command::Go(dt, arm_e, arm_r) => {
-                self.write_go(dt, arm_e, arm_r)?;
+            Command::Go(dt, next_e, next_r) => {
+                self.check_status();
+                self.write_go(dt, next_e, next_r)?;
                 block_on(self.pin_go(dt))
             }
-            Command::Reset(dt) => block_on(self.reset(dt)),
+            Command::Reset(dt) => {
+                block_on(self.reset(dt))
+            },
             Command::Zero(dt) => {
+                self.check_status();
                 self.zero(dt)
             }
             Command::ArrUrg => self.arr_urg(),
@@ -379,33 +383,33 @@ impl ArmsBackend {
         }
     }
 
-    pub fn write_go(&mut self, driver_type: DriverType, arm_e: Arm, arm_r: Arm) -> Result<(), HardwareError> {
+    pub fn write_go(&mut self, driver_type: DriverType, pos_e: Position, pos_r: Position) -> Result<(), HardwareError> {
         match driver_type {
-            DriverType::EX => self.driver_rs232.write_i2c(arm_e.next().x_to_bytes(), driver_type),
-            DriverType::EY => self.driver_rs232.write_i2c(arm_e.next().y_to_bytes(), driver_type),
-            DriverType::EZ => self.driver_rs232.write_i2c(arm_e.next().z_to_bytes(), driver_type),
-            DriverType::ETHETA => self.driver_rs232.write_i2c(arm_e.next().theta_to_bytes(), driver_type),
-            DriverType::RX => self.driver_rs232.write_i2c(arm_r.next().x_to_bytes(), driver_type),
-            DriverType::RY => self.driver_rs232.write_i2c(arm_r.next().y_to_bytes(), driver_type),
-            DriverType::RZ => self.driver_rs232.write_i2c(arm_r.next().z_to_bytes(), driver_type),
-            DriverType::RTHETA => self.driver_rs232.write_i2c(arm_r.next().theta_to_bytes(), driver_type),
+            DriverType::EX => self.driver_rs232.write_i2c(pos_e.x_to_bytes(), driver_type),
+            DriverType::EY => self.driver_rs232.write_i2c(pos_e.y_to_bytes(), driver_type),
+            DriverType::EZ => self.driver_rs232.write_i2c(pos_e.z_to_bytes(), driver_type),
+            DriverType::ETHETA => self.driver_rs232.write_i2c(pos_e.theta_to_bytes(), driver_type),
+            DriverType::RX => self.driver_rs232.write_i2c(pos_r.x_to_bytes(), driver_type),
+            DriverType::RY => self.driver_rs232.write_i2c(pos_r.y_to_bytes(), driver_type),
+            DriverType::RZ => self.driver_rs232.write_i2c(pos_r.z_to_bytes(), driver_type),
+            DriverType::RTHETA => self.driver_rs232.write_i2c(pos_r.theta_to_bytes(), driver_type),
             DriverType::R => {
-                self.write_go(DriverType::RX, Arm::default(), arm_r)?;
-                self.write_go(DriverType::RY, Arm::default(), arm_r)?;
-                self.write_go(DriverType::RZ, Arm::default(), arm_r)?;
-                self.write_go(DriverType::RTHETA, Arm::default(), arm_r)?;
+                self.write_go(DriverType::RX, Position::default(), pos_r)?;
+                self.write_go(DriverType::RY, Position::default(), pos_r)?;
+                self.write_go(DriverType::RZ, Position::default(), pos_r)?;
+                self.write_go(DriverType::RTHETA, Position::default(), pos_r)?;
                 Ok(())
             }
             DriverType::E => {
-                self.write_go(DriverType::EX, arm_e, Arm::default())?;
-                self.write_go(DriverType::EY, arm_e, Arm::default())?;
-                self.write_go(DriverType::EZ, arm_e, Arm::default())?;
-                self.write_go(DriverType::ETHETA, arm_e, Arm::default())?;
+                self.write_go(DriverType::EX, pos_e, Position::default())?;
+                self.write_go(DriverType::EY, pos_e, Position::default())?;
+                self.write_go(DriverType::EZ, pos_e, Position::default())?;
+                self.write_go(DriverType::ETHETA, pos_e, Position::default())?;
                 Ok(())
             }
             DriverType::ALL => {
-                self.clone().write_go(DriverType::E, arm_e, Arm::default())?;
-                self.clone().write_go(DriverType::R, Arm::default(), arm_r)?;
+                self.clone().write_go(DriverType::E, pos_e, Position::default())?;
+                self.clone().write_go(DriverType::R, Position::default(), pos_r)?;
                 Ok(())
             }
         }

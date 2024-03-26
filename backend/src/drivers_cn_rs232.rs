@@ -82,9 +82,23 @@ impl DriversCnRs232{
     }
 
     pub fn configuration(&mut self) -> Result<(),HardwareError>{
+        let mut i2c_handler = match self.i2c_handler.as_mut() {
+            None => {
+                Err(HardwareError::UnknownError)
+            }
+            Some(a) => {
+                Ok(a)
+            }
+        }?;
         for dt in DriverType::iter(){
             match dt {
-                DriverType::EX |
+                DriverType::EX => {
+                    handle_i2c_set_slave_error(i2c_handler, get_i2c_addr_value(dt) as u16, dt)?;
+                    handle_i2c_write_error(i2c_handler, 0x01,0x40 , dt)?;
+                    handle_i2c_write_error(i2c_handler, 0x0A,0x08 , dt)?;
+                    handle_i2c_write_error(i2c_handler, 0x0B,0x03 , dt)?;
+                    handle_i2c_write_error(i2c_handler, 0x0C,0x01 , dt)?;
+                },
                 DriverType::EY |
                 DriverType::EZ |
                 DriverType::ETHETA |
@@ -92,16 +106,11 @@ impl DriversCnRs232{
                 DriverType::RY |
                 DriverType::RZ |
                 DriverType::RTHETA => {
-                    handle_i2c_set_slave_error(self.i2c_handler.as_mut().unwrap(), get_i2c_addr_value(dt) as u16, dt)?;
-                    handle_i2c_write_error(self.i2c_handler.as_mut().unwrap(), 0x01,0x40 , dt)?;
-                    handle_i2c_write_error(self.i2c_handler.as_mut().unwrap(), 0x0A,0x08 , dt)?;
-                    handle_i2c_write_error(self.i2c_handler.as_mut().unwrap(), 0x0B,0x03 , dt)?;
-                    handle_i2c_write_error(self.i2c_handler.as_mut().unwrap(), 0x0C,0x01 , dt)?;
-                }
+
+                },
                 _ => {}
             }
         }
-        handle_i2c_set_slave_error(self.i2c_handler.as_mut().unwrap(), ADDR_X_E as u16,DriverType::EX)?;
 
         Ok(())
     }
@@ -109,15 +118,23 @@ impl DriversCnRs232{
     pub fn write_i2c(&mut self, data: [u8; 9], type_cn : DriverType) -> Result<(),HardwareError>{
         let i2c_addr = get_i2c_addr_value(type_cn);
         let iqr_pin = get_iqr_pin(type_cn);
-        handle_i2c_set_slave_error(self.i2c_handler.as_mut().unwrap(), i2c_addr as u16,type_cn)?;
+        let mut i2c_handler = match self.i2c_handler.as_mut() {
+            None => {
+                Err(HardwareError::UnknownError)
+            }
+            Some(a) => {
+                Ok(a)
+            }
+        }?;
+        handle_i2c_set_slave_error(i2c_handler, i2c_addr as u16,type_cn)?;
         for n in data.into_iter(){
-            handle_i2c_write_error(self.i2c_handler.as_mut().unwrap(),0x00,n,type_cn)?;
+            handle_i2c_write_error(i2c_handler,0x00,n,type_cn)?;
 
             while handle_pin_read_error(iqr_pin)? == 1 {}
 
-            handle_i2c_read_error(self.i2c_handler.as_mut().unwrap(), 0x02, type_cn)?;
+            handle_i2c_read_error(i2c_handler, 0x02, type_cn)?;
 
-            let g = handle_i2c_read_error(self.i2c_handler.as_mut().unwrap(), 0x00, type_cn)?;
+            let g = handle_i2c_read_error(i2c_handler, 0x00, type_cn)?;
 
             if g!=n {
                 return Err(HardwareError::BadI2cResponse(type_cn,g,n));

@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use crate::definitions::{DriverType,Doors};
 
-#[derive(serde::Deserialize, serde::Serialize,Copy, Clone,Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Clone,Debug)]
 pub enum HardwareError {
     NotPowered,
     NotStarted,
@@ -19,7 +19,7 @@ pub enum HardwareError {
     PinDirection(u8),
     PinWrite(u8),
     PinRead(u8),
-    UnknownError,
+    UnknownError(String),
 }
 
 impl Display for HardwareError {
@@ -40,7 +40,7 @@ impl Display for HardwareError {
             HardwareError::PinDirection(p) => format!("Direction du GPIO_{}",p),
             HardwareError::PinWrite(p) => format!("Problème d'écriture du GPIO_{}",p),
             HardwareError::PinRead(p) => format!("Problème de lecture du GPIO_{}",p),
-            _ => {"".to_string()}
+            HardwareError::UnknownError(string) => format!("{}", string)
         };
         write!(f,"{}",s)
     }
