@@ -75,3 +75,9 @@ Tapez à nouveau le mot de passe.
 ### Accès à l'interface
 
 Vous pouvez à présent vous connecter à l'interface depuis votre navigateur internet, en tapant `bassin.local` dans la barre d'adresse.
+
+## Utilisation
+
+![Interface de contrôle](interface.gif)
+
+

@@ -66,6 +66,22 @@ impl Default for TemplateApp {
         let left_arm = Arm::new(true);
         let right_arm = Arm::new(false);
         let client = Self::connect("wss://bassin.local:3333");
+        STATUS.lock().unwrap().replace(Some(Status::new(
+            false,
+            false,
+            true,
+            true,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            false,
+            false,
+            false,
+        )));
         Self {
             left: left_arm.clone(),
             right: right_arm.clone(),
@@ -205,7 +221,7 @@ impl TemplateApp {
                                     egui::Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GRAY
+                            None => egui::Color32::GREEN
                         },
                     );
                 });
@@ -227,7 +243,7 @@ impl TemplateApp {
                                     egui::Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GRAY
+                            None => egui::Color32::GREEN
                         },
                     );
                 });
@@ -249,7 +265,7 @@ impl TemplateApp {
                                     egui::Color32::RED
                                 }
                             }
-                            None => egui::Color32::GRAY
+                            None => egui::Color32::GREEN
                         },
                     );
                 });
@@ -271,7 +287,7 @@ impl TemplateApp {
                                     egui::Color32::RED
                                 }
                             }
-                            None => egui::Color32::GRAY
+                            None => egui::Color32::GREEN
                         },
                     );
                 });
@@ -293,7 +309,7 @@ impl TemplateApp {
                                     egui::Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GRAY
+                            None => egui::Color32::GREEN
                         },
                     );
                 });
@@ -315,7 +331,7 @@ impl TemplateApp {
                                     egui::Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GRAY
+                            None => egui::Color32::GREEN
                         },
                     );
                 });
@@ -404,7 +420,7 @@ impl TemplateApp {
                                     egui::Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GRAY
+                            None => egui::Color32::GREEN
                         },
                     );
                 });
@@ -448,7 +464,7 @@ impl TemplateApp {
                                     egui::Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GRAY
+                            None => egui::Color32::GREEN
                         },
                     );
                 });
@@ -492,7 +508,7 @@ impl TemplateApp {
                                     egui::Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GRAY
+                            None => egui::Color32::GREEN
                         },
                     );
                 });
@@ -536,7 +552,7 @@ impl TemplateApp {
                                     egui::Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GRAY
+                            None => egui::Color32::GREEN
                         },
                     );
                 });
@@ -1195,11 +1211,8 @@ impl eframe::App for TemplateApp {
 
         let mut dum = du.borrow_mut();
         let mut i = 0isize;
-        let mut nfini = true;
-        while nfini {
-            i = i + 1;
+        loop {
             if i >= (dum.len() as isize) {
-                nfini = false;
                 break;
             } else {
                 let dt = dum[i as usize];
@@ -1208,7 +1221,7 @@ impl eframe::App for TemplateApp {
                         match dt {
                             DriverType::EX => {
                                 if !status.movement_ex() {
-                                    if !(dum.contains(DriverType::EY) || dum.contains(DriverType::EZ) || dum.contains(DriverType::ETHETA)) {
+                                    if !(dum.contains(&DriverType::EY) || dum.contains(&DriverType::EZ) || dum.contains(&DriverType::ETHETA)) {
                                         self.left.move_next();
                                     } else {
                                         self.left.move_next_x();
@@ -1220,7 +1233,7 @@ impl eframe::App for TemplateApp {
                             }
                             DriverType::EY => {
                                 if !status.movement_ey() {
-                                    if !(dum.contains(DriverType::EX) || dum.contains(DriverType::EZ) || dum.contains(DriverType::ETHETA)) {
+                                    if !(dum.contains(&DriverType::EX) || dum.contains(&DriverType::EZ) || dum.contains(&DriverType::ETHETA)) {
                                         self.left.move_next();
                                     } else {
                                         self.left.move_next_y();
@@ -1231,7 +1244,7 @@ impl eframe::App for TemplateApp {
                             }
                             DriverType::EZ => {
                                 if !status.movement_ez() {
-                                    if !(dum.contains(DriverType::EY) || dum.contains(DriverType::EX) || dum.contains(DriverType::ETHETA)) {
+                                    if !(dum.contains(&DriverType::EY) || dum.contains(&DriverType::EX) || dum.contains(&DriverType::ETHETA)) {
                                         self.left.move_next();
                                     } else {
                                         self.left.move_next_z();
@@ -1243,7 +1256,7 @@ impl eframe::App for TemplateApp {
                             DriverType::ETHETA => {
                                 if !status.movement_et() {
                                     self.left.move_next_theta();
-                                    if !(dum.contains(DriverType::EY) || dum.contains(DriverType::EZ) || dum.contains(DriverType::EX)) {
+                                    if !(dum.contains(&DriverType::EY) || dum.contains(&DriverType::EZ) || dum.contains(&DriverType::EX)) {
                                         self.left.move_next();
                                     }
                                     dum.remove(i.try_into().unwrap());
@@ -1281,10 +1294,12 @@ impl eframe::App for TemplateApp {
                             }
                             _ => {}
                         }
+                        info!("{}, {:?}, {}", dt, dum, (dum.contains(&DriverType::EY) || dum.contains(&DriverType::EZ) || dum.contains(&DriverType::EX)));
                     }
                     None => {}
                 }
             }
+            i = i + 1;
         }
 
         ctx.request_repaint();
