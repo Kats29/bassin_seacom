@@ -82,7 +82,15 @@ Vous pouvez à présent vous connecter à l'interface depuis votre navigateur in
 
 ### Apparence et organisation
 
+L'interface est constituée d'une seule vue, qui est séparée en trois zones : une vue centrale, et deux panneaux latéraux. En cas de nécéssité, une fenêtre d'erreur peut également s'ouvrir devant la vue centrale.
+
 #### Vue centrale
+
+La vue centrale représente une visualisation de l'état actuel du bassin, ainsi que des commandes prévues.
+
+Sa partie supérieure montre une vue du dessus en séparant les moitiés droite et gauche du bassin. La même séparation est visible sur la partie inférieure, qui elle montre une vue de côté du bassin (pour visualiser la profondeur).
+
+Les cadres noirs délimitent les zones où chacun des deux bras peut se déplacer, et les symboles ![émetteur](frontend/assets/emitter.png) en noir symbolysent la position actuelle de chaque bras.
 
 #### Panneau gauche
 
