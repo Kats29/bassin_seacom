@@ -90,7 +90,7 @@ La vue centrale représente une visualisation de l'état actuel du bassin, ainsi
 
 Sa partie supérieure montre une vue du dessus en séparant les moitiés droite et gauche du bassin. La même séparation est visible sur la partie inférieure, qui elle montre une vue de côté du bassin (pour visualiser la profondeur).
 
-Les cadres noirs délimitent les zones où chacun des deux bras peut se déplacer, et les symboles <img src="frontend/assets/emitter.png" width="20" background-color="gray"> en noir symbolysent la position actuelle de chaque bras.
+Les cadres noirs délimitent les zones où chacun des deux bras peut se déplacer, et les symboles <span background-color="gray"><img src="frontend/assets/emitter.png" width="20"></span> en noir symbolysent la position actuelle de chaque bras.
 
 #### Panneau gauche
 
