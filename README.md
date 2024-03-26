@@ -80,4 +80,42 @@ Vous pouvez à présent vous connecter à l'interface depuis votre navigateur in
 
 ![Interface de contrôle](interface.gif)
 
+### Apparence et organisation
 
+#### Vue centrale
+
+#### Panneau gauche
+
+#### Panneau droit
+
+#### Fenêtre d'erreur
+
+### Commandes d'alimentation
+
+#### Allumer le bassin
+
+#### Éteindre le bassin
+
+#### Redémarrage des commandes numériques (RESET)
+
+### Gestion des mouvements
+
+#### Ajouter un mouvement
+
+#### Supprimer un mouvement
+
+#### Modifier un mouvement
+
+### Effectuer un mouvement
+
+#### Commandes générales
+
+#### Commandes par bras
+
+#### Commandes par axe
+
+### Sauvegarde et importation de positions
+
+#### Sauvegarder la configuration
+
+#### Importer une configuration

@@ -162,9 +162,9 @@ impl TemplateApp {
                                     }
                                     _ => {}
                                 }
-                                ERR_LIST.lock().unwrap().push(e);
-                                errors_string += format!("\n{}", e).as_str();
-                                info!("{}", e);
+                                ERR_LIST.lock().unwrap().push(e.clone());
+                                errors_string += format!("\n{}", e.clone()).as_str();
+                                info!("{}", e.clone());
                             }
                         }
                     }
@@ -657,7 +657,7 @@ impl TemplateApp {
                 }
                 modal.open();
 
-                self.file_dialog(ctx);
+                self.file_dialog();
 
                 // Top view
                 ui.heading("Vue de dessus");
@@ -914,12 +914,19 @@ impl TemplateApp {
             })
     }
 
-    pub fn file_dialog(&mut self, ctx: &egui::Context) {
+    pub fn file_dialog(&mut self) {
         loop {
             match self.file_dialog.1.try_recv() {
                 Ok(string) => { //Load file
-                    (self.left, self.right) = serde_json::from_str(string.as_str())
-                        .unwrap_or((self.left.clone(), self.right.clone()));
+                    match serde_json::from_str::<(Vec<Position>, Vec<Position>)>(string.as_str()) {
+                        Ok((left_next, right_next)) => {
+                            self.left.del_list();
+                            left_next.iter().for_each(|pos| self.left.add_next(*pos));
+                            self.right.del_list();
+                            right_next.iter().for_each(|pos| self.right.add_next(*pos));
+                        },
+                        Err(_) => ERR_LIST.lock().unwrap().push(HardwareError::UnknownError("Format de fichier invalide".to_string()))
+                    }
                 }
                 Err(_) => {
                     break;
@@ -1171,7 +1178,7 @@ impl eframe::App for TemplateApp {
                             .set_file_name("position_bassin.json")
                             .save_file();
 
-                        let data = serde_json::to_string(&(self.left.clone(), self.right.clone()))
+                        let data = serde_json::to_string(&(self.left.list_next().clone(), self.right.list_next().clone()))
                             .expect("JSON conversion error");
 
                         execute(async move {
