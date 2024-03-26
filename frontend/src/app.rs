@@ -12,16 +12,16 @@ use eframe::egui;
 use egui::Ui;
 use egui_extras::install_image_loaders;
 use egui_modal::Modal;
+use futures::executor::block_on;
 use log::{debug, error, info, Level};
+use rfd;
 use serde::{Deserialize, Serialize};
 use serde_json;
+use wasm_bindgen_futures;
 use wasm_sockets::{
     EventClient,
     Message,
 };
-use wasm_bindgen_futures;
-use futures::executor::block_on;
-use rfd;
 
 use common::{
     definitions::{
@@ -57,7 +57,7 @@ pub struct TemplateApp {
     file_dialog: (
         std::sync::mpsc::Sender<String>,
         std::sync::mpsc::Receiver<String>,
-    )
+    ),
 }
 
 
@@ -72,7 +72,7 @@ impl Default for TemplateApp {
             next_e: left_arm.position(),
             next_r: left_arm.position(),
             stream: client,
-            file_dialog: std::sync::mpsc::channel()
+            file_dialog: std::sync::mpsc::channel(),
         }
     }
 }
@@ -371,7 +371,6 @@ impl TemplateApp {
                         }
                         if ui.button("Origine").clicked() {
                             self.origin(if is_emitter { DriverType::EX } else { DriverType::RX });
-
                         }
                         if ui.button("Reset").clicked() {
                             self.reset_driver(if is_emitter { DriverType::EX } else { DriverType::RX });
@@ -417,7 +416,6 @@ impl TemplateApp {
                     ui.menu_button("Y", |ui| {
                         if ui.button("Go").clicked() {
                             self.move_next(if is_emitter { DriverType::EY } else { DriverType::RY });
-
                         }
                         if ui.button("Origine").clicked() {
                             self.origin(if is_emitter { DriverType::EY } else { DriverType::RY });
@@ -642,7 +640,7 @@ impl TemplateApp {
                     });
                 }
                 modal.open();
-                
+
                 self.file_dialog(ctx);
 
                 // Top view
@@ -906,7 +904,7 @@ impl TemplateApp {
                 Ok(string) => { //Load file
                     (self.left, self.right) = serde_json::from_str(string.as_str())
                         .unwrap_or((self.left.clone(), self.right.clone()));
-                },
+                }
                 Err(_) => {
                     break;
                 }
@@ -1153,7 +1151,7 @@ impl eframe::App for TemplateApp {
                 }
                 ui.menu_button("Fichier", |ui| {
                     if ui.button("Sauvegarder").clicked() {
-                         let task = rfd::AsyncFileDialog::new()
+                        let task = rfd::AsyncFileDialog::new()
                             .set_file_name("position_bassin.json")
                             .save_file();
 
@@ -1169,7 +1167,7 @@ impl eframe::App for TemplateApp {
                         });
                     }
                     if ui.button("Charger").clicked() {
-                         let task = rfd::AsyncFileDialog::new()
+                        let task = rfd::AsyncFileDialog::new()
                             .add_filter("Text files", &["json"])
                             .pick_file();
 
@@ -1210,7 +1208,11 @@ impl eframe::App for TemplateApp {
                         match dt {
                             DriverType::EX => {
                                 if !status.movement_ex() {
-                                    self.left.move_next_x();
+                                    if !(dum.contains(DriverType::EY) || dum.contains(DriverType::EZ) || dum.contains(DriverType::ETHETA)) {
+                                        self.left.move_next();
+                                    } else {
+                                        self.left.move_next_x();
+                                    }
                                     dum.remove(i.try_into().unwrap());
                                     info!("index : {} \n lentgh : {}",i,dum.len());
                                     i = i - 1;
@@ -1218,25 +1220,33 @@ impl eframe::App for TemplateApp {
                             }
                             DriverType::EY => {
                                 if !status.movement_ey() {
-                                    self.left.move_next_y();
+                                    if !(dum.contains(DriverType::EX) || dum.contains(DriverType::EZ) || dum.contains(DriverType::ETHETA)) {
+                                        self.left.move_next();
+                                    } else {
+                                        self.left.move_next_y();
+                                    }
                                     dum.remove(i.try_into().unwrap());
-                                    info!("index : {} \n lentgh : {}",i,dum.len());
                                     i = i - 1;
                                 }
                             }
                             DriverType::EZ => {
                                 if !status.movement_ez() {
-                                    self.left.move_next_z();
+                                    if !(dum.contains(DriverType::EY) || dum.contains(DriverType::EX) || dum.contains(DriverType::ETHETA)) {
+                                        self.left.move_next();
+                                    } else {
+                                        self.left.move_next_z();
+                                    }
                                     dum.remove(i.try_into().unwrap());
-                                    info!("index : {} \n lentgh : {}",i,dum.len());
                                     i = i - 1;
                                 }
                             }
                             DriverType::ETHETA => {
                                 if !status.movement_et() {
                                     self.left.move_next_theta();
+                                    if !(dum.contains(DriverType::EY) || dum.contains(DriverType::EZ) || dum.contains(DriverType::EX)) {
+                                        self.left.move_next();
+                                    }
                                     dum.remove(i.try_into().unwrap());
-                                    info!("index : {} \n lentgh : {}",i,dum.len());
                                     i = i - 1;
                                 }
                             }
@@ -1245,7 +1255,6 @@ impl eframe::App for TemplateApp {
                                 if !status.movement_rx() {
                                     self.right.move_next_x();
                                     dum.remove(i.try_into().unwrap());
-                                    info!("index : {} \n lentgh : {}",i,dum.len());
                                     i = i - 1;
                                 }
                             }
@@ -1253,7 +1262,6 @@ impl eframe::App for TemplateApp {
                                 if !status.movement_ry() {
                                     self.right.move_next_y();
                                     dum.remove(i.try_into().unwrap());
-                                    info!("index : {} \n lentgh : {}",i,dum.len());
                                     i = i - 1;
                                 }
                             }
@@ -1261,7 +1269,6 @@ impl eframe::App for TemplateApp {
                                 if !status.movement_rz() {
                                     self.right.move_next_z();
                                     dum.remove(i.try_into().unwrap());
-                                    info!("index : {} \n lentgh : {}",i,dum.len());
                                     i = i - 1;
                                 }
                             }
@@ -1269,7 +1276,6 @@ impl eframe::App for TemplateApp {
                                 if !status.movement_rt() {
                                     self.right.move_next_theta();
                                     dum.remove(i.try_into().unwrap());
-                                    info!("index : {} \n lentgh : {}",i,dum.len());
                                     i = i - 1;
                                 }
                             }
@@ -1286,6 +1292,6 @@ impl eframe::App for TemplateApp {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn execute<F: std::future::Future<Output = ()> + 'static>(f: F) {
+fn execute<F: std::future::Future<Output=()> + 'static>(f: F) {
     wasm_bindgen_futures::spawn_local(f);
 }

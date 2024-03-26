@@ -39,6 +39,9 @@ pub static STREAM_LOG_ERRORS: Mutex<RefCell<Option<File>>> = Mutex::new(RefCell:
 pub static STREAM_LOG_IO: Mutex<RefCell<Option<File>>> = Mutex::new(RefCell::new(None));
 pub static STREAM_LOG_TCP: Mutex<RefCell<Option<File>>> = Mutex::new(RefCell::new(None));
 
+
+///Fonction principale de notre serveur serveur WebSocket
+///
 fn handle_client() -> std::io::Result<()> {
     let _join_1 = match Builder::new().name("update_thread".to_string()).spawn(|| {
         loop {
@@ -163,53 +166,6 @@ fn handle_client() -> std::io::Result<()> {
             return Err(e);
         }
     };
-    /*loop {
-        match stream.recv_message() {
-            Ok(OwnedMessage::Text(msg)) => {
-                let command: Command;
-                match serde_json::from_str(msg.as_str()) {
-                    Ok(json) => {
-                        println!("Data received : \n{:?}", json);
-                        command = json;
-                        let update_result = DRIVERS.lock().unwrap().borrow().update(command);
-                        println!(" list d'erreur :{:?}", ERR_LIST.lock().unwrap());
-                        let result = if ERR_LIST.lock().unwrap().is_empty() {
-                            serde_json::to_string(&[update_result]).expect("Pb Json")
-                        } else {
-                            serde_json::to_string(ERR_LIST.lock().unwrap().deref()).expect("Pb Json")
-                        };
-                        stream.send_message(&websocket::Message::text(result)).expect("TODO: panic message");
-                        *ERR_LIST.lock().unwrap() = vec![];
-                    }
-                    Err(ref e) => {
-                        println!("Unrecognizable data : {}", msg);
-                    }
-                }
-            }
-            Ok(_) => {
-                println!("un message pas au format text");
-            }
-
-            Err(ref e) => {
-                // println!("encountered IO error: {e}");
-            }
-        }
-        let check = DRIVERS.lock().unwrap().borrow().check_status();
-        let result = serde_json::to_string(&[check]).expect("Pb Json");
-        match stream.send_message(&websocket::Message::text(result)) {
-            Ok(_) => {}
-            Err(_) => {}
-        }*/
-    // loop {
-    //     if join_1.is_finished() {
-    //         println!("Le thread de lecture est finito pipo");
-    //         break;
-    //     }
-    //     if join_2.is_finished() {
-    //         println!("Le thread de checkup est finito pipo");
-    //         break;
-    //     }
-    // }
     Ok(())
 }
 

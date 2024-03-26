@@ -1,6 +1,9 @@
 use std::collections::VecDeque;
 use std::fmt::{Display, Formatter};
 
+
+///
+/// Liste des portes du bassin
 #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
 pub enum Doors {
     GaucheBas,
@@ -9,6 +12,7 @@ pub enum Doors {
     DroiteHaut,
 }
 
+/// Implémentation du trait Display pour la structure Doors
 impl Display for Doors {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let s = match self {
@@ -21,6 +25,8 @@ impl Display for Doors {
     }
 }
 
+
+/// Liste des drivers du bassin (R correspond aux récepteurs, E aux émetteurs et ALL a tout les drivers)
 #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug, strum::EnumIter,PartialEq)]
 pub enum DriverType {
     EX,
@@ -39,22 +45,24 @@ pub enum DriverType {
 impl Display for DriverType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let s = match self {
-            DriverType::EX => "Driver pour le moteur X émetteur",
-            DriverType::EY => "Driver pour le moteur Y émetteur",
-            DriverType::EZ => "Driver pour le moteur Z émetteur",
-            DriverType::ETHETA => "Driver pour le moteur Théta émetteur",
-            DriverType::RX => "Driver pour le moteur X récepteur",
-            DriverType::RY => "Driver pour le moteur Y récepteur",
-            DriverType::RZ => "Driver pour le moteur Z récepteur",
-            DriverType::RTHETA => "Driver pour le moteur Théta récepteur",
-            DriverType::E => "Drivers pour les moteur émetteur",
-            DriverType::R => "Drivers pour les moteur récepteur",
-            DriverType::ALL => "Drivers pour tous les moteurs"
+            DriverType::EX => "Driver du moteur X émetteur",
+            DriverType::EY => "Driver du moteur Y émetteur",
+            DriverType::EZ => "Driver du moteur Z émetteur",
+            DriverType::ETHETA => "Driver du moteur Théta émetteur",
+            DriverType::RX => "Driver du moteur X récepteur",
+            DriverType::RY => "Driver du moteur Y récepteur",
+            DriverType::RZ => "Driver du moteur Z récepteur",
+            DriverType::RTHETA => "Driver du moteur Théta récepteur",
+            DriverType::E => "Drivers des moteur émetteur",
+            DriverType::R => "Drivers des moteur récepteur",
+            DriverType::ALL => "Drivers de tout les moteurs"
         };
         write!(f, "{}", s)
     }
 }
 
+
+///Liste des Commandes possible
 #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
 pub enum Command {
     Go(DriverType, Position, Position),
@@ -68,6 +76,8 @@ pub enum Command {
     Stop,
 }
 
+
+///Structure sauvegardant la possition de 4 axes, x, y, z et θ
 #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
 #[serde(default)]
 pub struct Position {
@@ -93,10 +103,14 @@ impl Position {
         Self { x, y, z, theta }
     }
 
+
+    ///Modifie la position par la position pos
     pub fn set_pos(&mut self,pos: Self){
         *self = pos;
     }
 
+
+    /// Getter pour x
     pub fn x(self) -> f32 {
         return self.x;
     }
@@ -104,6 +118,7 @@ impl Position {
         self.x = value;
     }
 
+    /// Getter pour y
     pub fn y(self) -> f32 {
         return self.y;
     }
@@ -111,6 +126,7 @@ impl Position {
         self.y = value;
     }
 
+    /// Getter pour z
     pub fn z(self) -> f32 {
         return self.z;
     }
@@ -118,6 +134,7 @@ impl Position {
         self.z = value;
     }
 
+    /// Getter pour x
     pub fn theta(self) -> f32 {
         return self.theta;
     }
