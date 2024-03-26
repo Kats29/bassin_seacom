@@ -212,7 +212,7 @@ impl TemplateApp {
                 ui.end_row();
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    (bool, rfd::FileHandle(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle)(bool, rfd::FileHandle))ui.label("Porte droite");
+                    ui.label("Porte droite");
                 });
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let (_, rect) = ui.allocate_space(egui::vec2(10.0, 10.0));
