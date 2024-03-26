@@ -7,7 +7,6 @@ use sysfs_gpio::{Direction, Pin};
 
 use common::{
     definitions::{
-        Arm,
         Command,
         Doors,
         DriverType,
@@ -21,8 +20,12 @@ use crate::driver_cn_pin::DriverCnPin;
 use crate::drivers_cn_rs232::DriversCnRs232;
 use crate::error_handler::{handle_pin_direction_error, handle_pin_export_error, handle_pin_read_error, handle_pin_set_active_low, handle_pin_write_error};
 
+
+/// Liste des erreurs de l'update courante
 pub static ERR_LIST: Mutex<RefCell<Vec<Result<(), HardwareError>>>> = Mutex::new(RefCell::new(vec![]));
 
+
+/// Structure regroupant tout les drivers et les [`sysfs_gpio::Pin`] nécessaire pour faire fonctionné le bassin
 pub struct ArmsBackend {
     driver_x_emetteur: DriverCnPin,
     driver_y_emetteur: DriverCnPin,
@@ -147,8 +150,9 @@ impl ArmsBackend {
         handle_pin_direction_error(self.pin_porte_gauche_haut, Direction::In)?;
         handle_pin_direction_error(self.pin_porte_droite_bas, Direction::In)?;
         handle_pin_direction_error(self.pin_porte_droite_haut, Direction::In)
-    }
 
+    }
+    /// Fonction
     pub fn check_status(&self) -> Status {
         let tmp = ERR_LIST.lock().unwrap();
         let mut vec_error = tmp.borrow_mut();
@@ -459,7 +463,7 @@ impl ArmsBackend {
                 if ERR_LIST.lock().unwrap().borrow().is_empty() {
                     return Ok(());
                 }
-                Err(HardwareError::UnknownError)
+                Err(HardwareError::UnknownError("".to_string()))
             }
             DriverType::E => {
                 let x = self.pin_go(DriverType::EX);
@@ -481,7 +485,7 @@ impl ArmsBackend {
                 if ERR_LIST.lock().unwrap().borrow().is_empty() {
                     return Ok(());
                 }
-                Err(HardwareError::UnknownError)
+                Err(HardwareError::UnknownError("".to_string()))
             }
             DriverType::ALL => {
                 let r = self.pin_go(DriverType::R);
@@ -500,7 +504,7 @@ impl ArmsBackend {
                 if ERR_LIST.lock().unwrap().borrow().is_empty() {
                     return Ok(());
                 }
-                Err(HardwareError::UnknownError)
+                Err(HardwareError::UnknownError("".to_string()))
             }
         }
     }
@@ -546,7 +550,7 @@ impl ArmsBackend {
                 if ERR_LIST.lock().unwrap().borrow().is_empty() {
                     return Ok(());
                 }
-                Err(HardwareError::UnknownError)
+                Err(HardwareError::UnknownError("".to_string()))
             }
             DriverType::E => {
                 let x = self.reset(DriverType::EX);
@@ -568,7 +572,7 @@ impl ArmsBackend {
                 if ERR_LIST.lock().unwrap().borrow().is_empty() {
                     return Ok(());
                 }
-                Err(HardwareError::UnknownError)
+                Err(HardwareError::UnknownError("".to_string()))
             }
             DriverType::ALL => {
                 let r = self.reset(DriverType::R);
@@ -587,7 +591,7 @@ impl ArmsBackend {
                 if ERR_LIST.lock().unwrap().borrow().is_empty() {
                     return Ok(());
                 }
-                Err(HardwareError::UnknownError)
+                Err(HardwareError::UnknownError("".to_string()))
             }
         }
     }

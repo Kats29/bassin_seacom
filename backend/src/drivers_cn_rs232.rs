@@ -84,7 +84,7 @@ impl DriversCnRs232{
     pub fn configuration(&mut self) -> Result<(),HardwareError>{
         let mut i2c_handler = match self.i2c_handler.as_mut() {
             None => {
-                Err(HardwareError::UnknownError)
+                Err(HardwareError::UnknownError("".to_string()))
             }
             Some(a) => {
                 Ok(a)
@@ -120,7 +120,7 @@ impl DriversCnRs232{
         let iqr_pin = get_iqr_pin(type_cn);
         let mut i2c_handler = match self.i2c_handler.as_mut() {
             None => {
-                Err(HardwareError::UnknownError)
+                Err(HardwareError::UnknownError("".to_string()))
             }
             Some(a) => {
                 Ok(a)

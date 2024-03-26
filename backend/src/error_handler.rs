@@ -87,7 +87,7 @@ pub fn handle_pin_set_active_low(pin: Pin, activ_low: bool) -> Result<(), Hardwa
         }
         Err(_) => {
             write_error_log(format!("Unable to set GPIO_{} active at low", pin.get_pin()));
-            Err(HardwareError::UnknownError)
+            Err(HardwareError::UnknownError("".to_string()))
         }
     }
 }

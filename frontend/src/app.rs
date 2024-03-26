@@ -9,7 +9,7 @@ use std::sync::Mutex;
 use console_error_panic_hook;
 use console_log;
 use eframe::egui;
-use egui::Ui;
+use egui::{Color32, Ui};
 use egui_extras::install_image_loaders;
 use egui_modal::Modal;
 use futures::executor::block_on;
@@ -885,27 +885,24 @@ impl TemplateApp {
                         },
                     );
 
+
+                    couleur = egui::Color32::from_rgba_premultiplied(
+                        if i == 0 && !DRIVER_USED.lock().unwrap().borrow().is_empty() { 128 } else { 0 },
+                        0,
+                        0,
+                        100,
+                    );
                     ui.painter().circle_filled(
                         list_pos,
                         2.5,
-                        egui::Color32::from_rgba_premultiplied(
-                            if i == 0 && !DRIVER_USED.lock().unwrap().borrow().is_empty() { 128 } else { 0 },
-                            0,
-                            0,
-                            100,
-                        ),
+                        couleur,
                     );
 
                     ui.painter().line_segment(
                         [prev_pos, list_pos],
                         egui::Stroke::new(
                             1.0,
-                            egui::Color32::from_rgba_premultiplied(
-                                if i == 0 && !DRIVER_USED.lock().unwrap().borrow().is_empty() { 128 } else { 0 },
-                                0,
-                                0,
-                                100,
-                            ),
+                            couleur,
                         ),
                     );
 
@@ -924,7 +921,7 @@ impl TemplateApp {
                             left_next.iter().for_each(|pos| self.left.add_next(*pos));
                             self.right.del_list();
                             right_next.iter().for_each(|pos| self.right.add_next(*pos));
-                        },
+                        }
                         Err(_) => ERR_LIST.lock().unwrap().push(HardwareError::UnknownError("Format de fichier invalide".to_string()))
                     }
                 }
@@ -953,6 +950,7 @@ impl TemplateApp {
                 dum.push(DriverType::EY);
                 dum.push(DriverType::EZ);
                 dum.push(DriverType::ETHETA);
+                dum.push(DriverType::E);
             }
             DriverType::R => {
                 self.right.origin();
@@ -960,6 +958,7 @@ impl TemplateApp {
                 dum.push(DriverType::RY);
                 dum.push(DriverType::RZ);
                 dum.push(DriverType::RTHETA);
+                dum.push(DriverType::R);
             }
             DriverType::ALL => {
                 self.right.origin();
@@ -968,11 +967,13 @@ impl TemplateApp {
                 dum.push(DriverType::EY);
                 dum.push(DriverType::EZ);
                 dum.push(DriverType::ETHETA);
+                dum.push(DriverType::E);
 
                 dum.push(DriverType::RX);
                 dum.push(DriverType::RY);
                 dum.push(DriverType::RZ);
                 dum.push(DriverType::RTHETA);
+                dum.push(DriverType::R);
             }
             DriverType::EX => {
                 self.left.origin_x();
@@ -1026,26 +1027,36 @@ impl TemplateApp {
                 dum.push(DriverType::EY);
                 dum.push(DriverType::EZ);
                 dum.push(DriverType::ETHETA);
+                dum.push(DriverType::E);
             }
             DriverType::R => {
                 dum.push(DriverType::RX);
                 dum.push(DriverType::RY);
                 dum.push(DriverType::RZ);
                 dum.push(DriverType::RTHETA);
+                dum.push(DriverType::R);
             }
             DriverType::ALL => {
                 dum.push(DriverType::EX);
                 dum.push(DriverType::EY);
                 dum.push(DriverType::EZ);
                 dum.push(DriverType::ETHETA);
+                dum.push(DriverType::E);
 
                 dum.push(DriverType::RX);
                 dum.push(DriverType::RY);
                 dum.push(DriverType::RZ);
                 dum.push(DriverType::RTHETA);
+                dum.push(DriverType::R);
             }
-            _ => {
+            DriverType::EX | DriverType::EY | DriverType::EZ | DriverType::EZ => {
                 dum.push(dt);
+                dum.push(DriverType::E);
+            }
+
+            DriverType::EX | DriverType::EY | DriverType::EZ | DriverType::EZ => {
+                dum.push(dt);
+                dum.push(DriverType::E);
             }
         }
     }
@@ -1228,11 +1239,8 @@ impl eframe::App for TemplateApp {
                         match dt {
                             DriverType::EX => {
                                 if !status.movement_ex() {
-                                    if !(dum.contains(&DriverType::EY) || dum.contains(&DriverType::EZ) || dum.contains(&DriverType::ETHETA)) {
-                                        self.left.move_next();
-                                    } else {
-                                        self.left.move_next_x();
-                                    }
+                                    self.left.move_next_x();
+
                                     dum.remove(i.try_into().unwrap());
                                     info!("index : {} \n lentgh : {}",i,dum.len());
                                     i = i - 1;
@@ -1240,22 +1248,15 @@ impl eframe::App for TemplateApp {
                             }
                             DriverType::EY => {
                                 if !status.movement_ey() {
-                                    if !(dum.contains(&DriverType::EX) || dum.contains(&DriverType::EZ) || dum.contains(&DriverType::ETHETA)) {
-                                        self.left.move_next();
-                                    } else {
-                                        self.left.move_next_y();
-                                    }
+                                    self.left.move_next_y();
+
                                     dum.remove(i.try_into().unwrap());
                                     i = i - 1;
                                 }
                             }
                             DriverType::EZ => {
                                 if !status.movement_ez() {
-                                    if !(dum.contains(&DriverType::EY) || dum.contains(&DriverType::EX) || dum.contains(&DriverType::ETHETA)) {
-                                        self.left.move_next();
-                                    } else {
-                                        self.left.move_next_z();
-                                    }
+                                    self.left.move_next_z();
                                     dum.remove(i.try_into().unwrap());
                                     i = i - 1;
                                 }
@@ -1263,9 +1264,7 @@ impl eframe::App for TemplateApp {
                             DriverType::ETHETA => {
                                 if !status.movement_et() {
                                     self.left.move_next_theta();
-                                    if !(dum.contains(&DriverType::EY) || dum.contains(&DriverType::EZ) || dum.contains(&DriverType::EX)) {
-                                        self.left.move_next();
-                                    }
+
                                     dum.remove(i.try_into().unwrap());
                                     i = i - 1;
                                 }
@@ -1299,9 +1298,22 @@ impl eframe::App for TemplateApp {
                                     i = i - 1;
                                 }
                             }
+                            DriverType::E => {
+                                if !(dum.contains(&DriverType::EX) || dum.contains(&DriverType::EY) || dum.contains(&DriverType::EX) || dum.contains(&DriverType::ETHETA)) {
+                                    self.left.move_next();
+                                }
+                                dum.remove(i.try_into().unwrap());
+                                i = i - 1;
+                            }
+                            DriverType::R => {
+                                if !(dum.contains(&DriverType::RX) || dum.contains(&DriverType::RY) || dum.contains(&DriverType::RX) || dum.contains(&DriverType::RTHETA)) {
+                                    self.right.move_next();
+                                }
+                                dum.remove(i.try_into().unwrap());
+                                i = i - 1;
+                            }
                             _ => {}
                         }
-                        info!("{}, {:?}, {}", dt, dum, (dum.contains(&DriverType::EY) || dum.contains(&DriverType::EZ) || dum.contains(&DriverType::EX)));
                     }
                     None => {}
                 }
