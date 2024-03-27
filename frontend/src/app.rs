@@ -12,8 +12,7 @@ use eframe::egui;
 use egui::{Color32, Ui};
 use egui_extras::install_image_loaders;
 use egui_modal::Modal;
-use futures::executor::block_on;
-use log::{debug, error, info, Level};
+use log::{error, info, Level};
 use rfd;
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -147,7 +146,7 @@ impl TemplateApp {
                                 match e {
                                     I2cSetSlave(_, dt) |
                                     I2cRead(dt, _) |
-                                    I2cWrite(dt, _) |
+                                    I2cWrite(dt, _, _) |
                                     BadI2cResponse(dt, _, _) |
                                     MovmentNotFinished(dt) => {
                                         let du = DRIVER_USED.lock().unwrap();
@@ -198,8 +197,8 @@ impl TemplateApp {
                         rect.min + egui::vec2(5.0, 5.0),
                         5.0,
                         match self.stream.status.borrow().deref() {
-                            wasm_sockets::ConnectionStatus::Connected => egui::Color32::GREEN,
-                            _ => egui::Color32::RED
+                            wasm_sockets::ConnectionStatus::Connected => Color32::GREEN,
+                            _ => Color32::RED
                         },
                     );
                 });
@@ -216,12 +215,12 @@ impl TemplateApp {
                         match STATUS.lock().unwrap().borrow().as_ref() {
                             Some(status) => {
                                 if status.door_left_open() {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 } else {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -238,12 +237,12 @@ impl TemplateApp {
                         match STATUS.lock().unwrap().borrow().as_ref() {
                             Some(status) => {
                                 if status.door_right_open() {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 } else {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -260,12 +259,12 @@ impl TemplateApp {
                         match STATUS.lock().unwrap().borrow().as_ref() {
                             Some(status) => {
                                 if status.bassin_powered() {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 } else {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -282,12 +281,12 @@ impl TemplateApp {
                         match STATUS.lock().unwrap().borrow().as_ref() {
                             Some(status) => {
                                 if status.bassin_started() {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 } else {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -304,12 +303,12 @@ impl TemplateApp {
                         match STATUS.lock().unwrap().borrow().as_ref() {
                             Some(status) => {
                                 if status.arr_urg() {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 } else {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -326,12 +325,12 @@ impl TemplateApp {
                         match STATUS.lock().unwrap().borrow().as_ref() {
                             Some(status) => {
                                 if status.arr_mom() {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 } else {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -415,12 +414,12 @@ impl TemplateApp {
                                 } else {
                                     status.movement_rx()
                                 } {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 } else {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -459,12 +458,12 @@ impl TemplateApp {
                                 } else {
                                     status.movement_ry()
                                 } {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 } else {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -503,12 +502,12 @@ impl TemplateApp {
                                 } else {
                                     status.movement_rz()
                                 } {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 } else {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -547,12 +546,12 @@ impl TemplateApp {
                                 } else {
                                     status.movement_rt()
                                 } {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 } else {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -668,7 +667,7 @@ impl TemplateApp {
                         margin.left = ui.available_width() / 2.0 - width - 45.0;
                         margin
                     })
-                    .fill(egui::Color32::LIGHT_BLUE)
+                    .fill(Color32::LIGHT_BLUE)
                     .rounding(egui::Rounding::same(10.0))
                     .show(ui, |ui| {
                         ui.horizontal(|ui| {
@@ -697,7 +696,7 @@ impl TemplateApp {
                         margin.left = ui.available_width() / 2.0 - width - 45.0;
                         margin
                     })
-                    .fill(egui::Color32::LIGHT_BLUE)
+                    .fill(Color32::LIGHT_BLUE)
                     .rounding(egui::Rounding::same(10.0))
                     .show(ui, |ui| {
                         ui.horizontal(|ui| {
@@ -737,7 +736,7 @@ impl TemplateApp {
 
         egui::Frame::none()
             .inner_margin(egui::Margin::ZERO)
-            .stroke(egui::Stroke::new(2.0, egui::Color32::BLACK))
+            .stroke(egui::Stroke::new(2.0, Color32::BLACK))
             .rounding(rounding)
             .show(ui, |ui| {
                 ui.set_width(width + 30.0);
@@ -808,7 +807,7 @@ impl TemplateApp {
                     egui::include_image!("../assets/emitter.png")
                 )
                     .max_size(egui::vec2(30.0, 30.0))
-                    .tint(egui::Color32::from_rgba_premultiplied(
+                    .tint(Color32::from_rgba_premultiplied(
                         0,
                         0,
                         0,
@@ -886,7 +885,7 @@ impl TemplateApp {
                     );
 
 
-                    couleur = egui::Color32::from_rgba_premultiplied(
+                    let couleur = Color32::from_rgba_premultiplied(
                         if i == 0 && !DRIVER_USED.lock().unwrap().borrow().is_empty() { 128 } else { 0 },
                         0,
                         0,
@@ -1049,14 +1048,14 @@ impl TemplateApp {
                 dum.push(DriverType::RTHETA);
                 dum.push(DriverType::R);
             }
-            DriverType::EX | DriverType::EY | DriverType::EZ | DriverType::EZ => {
+            DriverType::EX | DriverType::EY | DriverType::EZ | DriverType::ETHETA => {
                 dum.push(dt);
                 dum.push(DriverType::E);
             }
 
-            DriverType::EX | DriverType::EY | DriverType::EZ | DriverType::EZ => {
+            DriverType::RX | DriverType::RY | DriverType::RZ | DriverType::RTHETA => {
                 dum.push(dt);
-                dum.push(DriverType::E);
+                dum.push(DriverType::R);
             }
         }
     }

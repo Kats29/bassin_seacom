@@ -50,7 +50,7 @@ static SLEEP_TIME_UPDATE: Duration = Duration::new(0, 500_000_000);
 static SLEEP_TIME_STATUS: Duration = Duration::new(0, 500_000_000);
 
 /// Boucle attandant la reception sur la connexion tcp d'une [`common::definitions::Command`] au format JSON.
-/// La command est ensuite executé sur les drivers des bras (ArmBackend)
+/// La command est ensuite executé par [`ArmBackend::update`]
 /// Un [`vec<common::error::HardwareError>`] au format JSON est ensuite envoyé en retour sur la connexion tcp
 fn update_thread_function() {
     loop {
@@ -171,7 +171,7 @@ fn status_thread_function() {
 
 /// Fonction principale de notre serveur serveur WebSocket.
 /// Créer deux thread, l'un avec la fonction  [`update_thread_function`] et l'autre avec la focntion
-/// [`status_thread_function`].
+/// [`status_thread_function`], afin que ces deux fonctions tournent en parallèle.
 fn handle_client() -> std::io::Result<()> {
     let _join_1 = match Builder::new().name("update_thread".to_string()).spawn(|| {
         update_thread_function()
@@ -193,7 +193,7 @@ fn handle_client() -> std::io::Result<()> {
     };
     Ok(())
 }
-/// Ouvre les différents fichiers de log puis créer un serveur web socket qui écoute sur l'adresse localhost:3333.
+/// Ouvre les différents fichiers de log et stock  puis créer un serveur web socket qui écoute sur l'adresse localhost:3333.
 /// Après une connexion la fonction [`handle_client`] est appelée.
 pub fn tcp_listen() -> std::io::Result<()> {
     STREAM_LOG_ERRORS.lock().unwrap().replace(

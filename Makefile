@@ -10,3 +10,6 @@ frontend: frontend/src/*
 	cd frontend; trunk build
 
 common: common/src/*
+
+doc :
+	cargo doc -p backend --target=armv7-unknown-linux-musleabihf;cargo doc -p frontend --target=wasm32-unknown-unknown;cargo doc -p common;
