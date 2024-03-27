@@ -18,7 +18,7 @@ use common::definitions::Position;
 
 use crate::driver_cn_pin::DriverCnPin;
 use crate::drivers_cn_rs232::DriversCnRs232;
-use crate::error_handler::{handle_pin_direction_error, handle_pin_export_error, handle_pin_read_error, handle_pin_set_active_low, handle_pin_write_error};
+use crate::error_handler::{pin_direction, pin_export, pin_read, pin_set_active_low, pin_write};
 
 
 /// Liste des erreurs de l'update courante
@@ -118,38 +118,38 @@ impl ArmsBackend {
     }
 
     fn global_pin_export(&mut self) -> Result<(), HardwareError> {
-        handle_pin_export_error(self.pin_ar_mom)?;
-        handle_pin_export_error(self.pin_on)?;
-        handle_pin_export_error(self.pin_ordre_ar_urg)?;
-        handle_pin_export_error(self.pin_info_etat)?;
-        handle_pin_export_error(self.pin_info_ar_urg)?;
+        pin_export(self.pin_ar_mom)?;
+        pin_export(self.pin_on)?;
+        pin_export(self.pin_ordre_ar_urg)?;
+        pin_export(self.pin_info_etat)?;
+        pin_export(self.pin_info_ar_urg)?;
 
-        handle_pin_export_error(self.pin_porte_gauche_bas)?;
-        handle_pin_export_error(self.pin_porte_gauche_haut)?;
-        handle_pin_export_error(self.pin_porte_droite_bas)?;
-        handle_pin_export_error(self.pin_porte_droite_haut)
+        pin_export(self.pin_porte_gauche_bas)?;
+        pin_export(self.pin_porte_gauche_haut)?;
+        pin_export(self.pin_porte_droite_bas)?;
+        pin_export(self.pin_porte_droite_haut)
     }
 
     fn global_pin_direction(&self) -> Result<(), HardwareError> {
-        handle_pin_set_active_low(self.pin_on, true)?;
-        handle_pin_set_active_low(self.pin_ordre_ar_urg, true)?;
-        handle_pin_set_active_low(self.pin_ar_mom, true)?;
-        handle_pin_direction_error(self.pin_on, Direction::High)?;
-        handle_pin_direction_error(self.pin_ordre_ar_urg, Direction::Low)?;
-        handle_pin_direction_error(self.pin_ar_mom, Direction::Low)?;
+        pin_set_active_low(self.pin_on, true)?;
+        pin_set_active_low(self.pin_ordre_ar_urg, true)?;
+        pin_set_active_low(self.pin_ar_mom, true)?;
+        pin_direction(self.pin_on, Direction::High)?;
+        pin_direction(self.pin_ordre_ar_urg, Direction::Low)?;
+        pin_direction(self.pin_ar_mom, Direction::Low)?;
 
-        handle_pin_set_active_low(self.pin_info_etat, true)?;
-        handle_pin_set_active_low(self.pin_info_ar_urg, true)?;
-        handle_pin_set_active_low(self.pin_porte_gauche_bas, true)?;
-        handle_pin_set_active_low(self.pin_porte_gauche_haut, true)?;
-        handle_pin_set_active_low(self.pin_porte_droite_bas, true)?;
-        handle_pin_set_active_low(self.pin_porte_droite_haut, true)?;
-        handle_pin_direction_error(self.pin_info_etat, Direction::In)?;
-        handle_pin_direction_error(self.pin_info_ar_urg, Direction::In)?;
-        handle_pin_direction_error(self.pin_porte_gauche_bas, Direction::In)?;
-        handle_pin_direction_error(self.pin_porte_gauche_haut, Direction::In)?;
-        handle_pin_direction_error(self.pin_porte_droite_bas, Direction::In)?;
-        handle_pin_direction_error(self.pin_porte_droite_haut, Direction::In)
+        pin_set_active_low(self.pin_info_etat, true)?;
+        pin_set_active_low(self.pin_info_ar_urg, true)?;
+        pin_set_active_low(self.pin_porte_gauche_bas, true)?;
+        pin_set_active_low(self.pin_porte_gauche_haut, true)?;
+        pin_set_active_low(self.pin_porte_droite_bas, true)?;
+        pin_set_active_low(self.pin_porte_droite_haut, true)?;
+        pin_direction(self.pin_info_etat, Direction::In)?;
+        pin_direction(self.pin_info_ar_urg, Direction::In)?;
+        pin_direction(self.pin_porte_gauche_bas, Direction::In)?;
+        pin_direction(self.pin_porte_gauche_haut, Direction::In)?;
+        pin_direction(self.pin_porte_droite_bas, Direction::In)?;
+        pin_direction(self.pin_porte_droite_haut, Direction::In)
 
     }
     /// Fonction permettant le renvoie d'un [`Status`] codant l'état actuelle du bassin
@@ -158,7 +158,7 @@ impl ArmsBackend {
         let mut vec_error = tmp.borrow_mut();
         *vec_error = vec![];
         let status = Status::new(
-            match handle_pin_read_error(self.pin_porte_droite_bas) {
+            match pin_read(self.pin_porte_droite_bas) {
                 Ok(result) => {
                     if result == 0 {
                         vec_error.push(Err(HardwareError::OpenDoor(Doors::DroiteBas)));
@@ -171,7 +171,7 @@ impl ArmsBackend {
                     vec_error.push(Err(e));
                     true
                 }
-            } || match handle_pin_read_error(self.pin_porte_droite_haut) {
+            } || match pin_read(self.pin_porte_droite_haut) {
                 Ok(result) => {
                     if result == 0 {
                         vec_error.push(Err(HardwareError::OpenDoor(Doors::DroiteHaut)));
@@ -185,7 +185,7 @@ impl ArmsBackend {
                     true
                 }
             },
-            match handle_pin_read_error(self.pin_porte_gauche_bas) {
+            match pin_read(self.pin_porte_gauche_bas) {
                 Ok(result) => {
                     if result == 0 {
                         vec_error.push(Err(HardwareError::OpenDoor(Doors::GaucheBas)));
@@ -199,7 +199,7 @@ impl ArmsBackend {
                     true
                 }
             } ||
-                match handle_pin_read_error(self.pin_porte_gauche_haut) {
+                match pin_read(self.pin_porte_gauche_haut) {
                     Ok(result) => {
                         if result == 0 {
                             vec_error.push(Err(HardwareError::OpenDoor(Doors::GaucheBas)));
@@ -214,7 +214,7 @@ impl ArmsBackend {
                     }
                 }
             ,
-            match handle_pin_read_error(self.pin_info_etat) {
+            match pin_read(self.pin_info_etat) {
                 Ok(result) => {
                     if result == 0 {
                         vec_error.push(Err(HardwareError::NotStarted));
@@ -228,7 +228,7 @@ impl ArmsBackend {
                     false
                 }
             },
-            match handle_pin_read_error(self.pin_on) {
+            match pin_read(self.pin_on) {
                 Ok(result_2) => {
                     if result_2 == 1 {
                         true
@@ -243,7 +243,7 @@ impl ArmsBackend {
                 }
             }
             ,
-            match handle_pin_read_error(self.pin_ordre_ar_urg) {
+            match pin_read(self.pin_ordre_ar_urg) {
                 Ok(result) => {
                     if result == 0 {
                         vec_error.push(Err(HardwareError::ArrUrg));
@@ -257,7 +257,7 @@ impl ArmsBackend {
                     false
                 }
             } ||
-                match handle_pin_read_error(self.pin_info_ar_urg) {
+                match pin_read(self.pin_info_ar_urg) {
                     Ok(result) => {
                         if result == 0 {
                             vec_error.push(Err(HardwareError::ArrUrg));
@@ -272,7 +272,7 @@ impl ArmsBackend {
                     }
                 }
             ,
-            match handle_pin_read_error(self.pin_ar_mom) {
+            match pin_read(self.pin_ar_mom) {
                 Ok(result) => {
                     if result == 0 {
                         vec_error.push(Err(HardwareError::ArrMom));
@@ -398,14 +398,14 @@ impl ArmsBackend {
     /// [`DriverType::E`], [`DriverType::R`] et [`DriverType::ALL`]
     pub fn write_go(&mut self, driver_type: DriverType, pos_e: Position, pos_r: Position) -> Result<(), HardwareError> {
         match driver_type {
-            DriverType::EX => self.driver_rs232.write_i2c(pos_e, driver_type),
-            DriverType::EY => self.driver_rs232.write_i2c(pos_e.y_to_bytes(), driver_type),
-            DriverType::EZ => self.driver_rs232.write_i2c(pos_e.z_to_bytes(), driver_type),
-            DriverType::ETHETA => self.driver_rs232.write_i2c(pos_e.theta_to_bytes(), driver_type),
-            DriverType::RX => self.driver_rs232.write_i2c(pos_r.x_to_bytes(), driver_type),
-            DriverType::RY => self.driver_rs232.write_i2c(pos_r.y_to_bytes(), driver_type),
-            DriverType::RZ => self.driver_rs232.write_i2c(pos_r.z_to_bytes(), driver_type),
-            DriverType::RTHETA => self.driver_rs232.write_i2c(pos_r.theta_to_bytes(), driver_type),
+            DriverType::EX => self.driver_rs232.write_i2c(DriversCnRs232::x_to_bytes(pos_e.x()), driver_type),
+            DriverType::EY => self.driver_rs232.write_i2c(DriversCnRs232::y_to_bytes(pos_e.y()), driver_type),
+            DriverType::EZ => self.driver_rs232.write_i2c(DriversCnRs232::z_to_bytes(pos_e.z()), driver_type),
+            DriverType::ETHETA => self.driver_rs232.write_i2c(DriversCnRs232::theta_to_bytes(pos_e.theta()), driver_type),
+            DriverType::RX => self.driver_rs232.write_i2c(DriversCnRs232::x_to_bytes(pos_r.x()), driver_type),
+            DriverType::RY => self.driver_rs232.write_i2c(DriversCnRs232::y_to_bytes(pos_r.y()), driver_type),
+            DriverType::RZ => self.driver_rs232.write_i2c(DriversCnRs232::z_to_bytes(pos_r.z()), driver_type),
+            DriverType::RTHETA => self.driver_rs232.write_i2c(DriversCnRs232::theta_to_bytes(pos_r.theta()), driver_type),
             DriverType::R => {
                 self.write_go(DriverType::RX, Position::default(), pos_r)?;
                 self.write_go(DriverType::RY, Position::default(), pos_r)?;
@@ -628,23 +628,23 @@ impl ArmsBackend {
     }
 
     fn arr_urg(&self) -> Result<(), HardwareError> {
-        let is_hight = handle_pin_read_error(self.pin_ordre_ar_urg)?;
-        handle_pin_write_error(self.pin_ordre_ar_urg, (!is_hight) & 1)?;
+        let is_hight = pin_read(self.pin_ordre_ar_urg)?;
+        pin_write(self.pin_ordre_ar_urg, (!is_hight) & 1)?;
         Ok(())
     }
 
     fn arr_mom(&self) -> Result<(), HardwareError> {
-        let is_hight = handle_pin_read_error(self.pin_ordre_ar_urg)?;
-        handle_pin_write_error(self.pin_ar_mom, (!is_hight) & 1)?;
+        let is_hight = pin_read(self.pin_ordre_ar_urg)?;
+        pin_write(self.pin_ar_mom, (!is_hight) & 1)?;
         Ok(())
     }
 
     fn start_bassin(&self) -> Result<(), HardwareError> {
-        handle_pin_write_error(self.pin_on, 1)
+        pin_write(self.pin_on, 1)
     }
 
     fn stop_bassin(&self) -> Result<(), HardwareError> {
-        handle_pin_write_error(self.pin_on, 0)
+        pin_write(self.pin_on, 0)
     }
 }
 

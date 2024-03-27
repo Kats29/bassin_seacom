@@ -2,12 +2,13 @@ use std::fs::File;
 use i2c_linux::I2c;
 use sysfs_gpio::{Direction, Pin};
 use strum::IntoEnumIterator;
+use sysfs_gpio::Direction::Low;
 use common::{
     error::HardwareError,
     definitions::DriverType,
 };
 
-use crate::error_handler::{handle_i2c_creation_error, handle_i2c_read_error, handle_i2c_set_slave_error, handle_i2c_write_error, handle_pin_direction_error, handle_pin_export_error, handle_pin_read_error};
+use crate::error_handler::{i2c_creation, i2c_read, i2c_set_slave, i2c_write, pin_direction, pin_export, pin_read, pin_write};
 
 
 
@@ -69,30 +70,33 @@ impl DriversCnRs232{
 
     pub fn new() -> Result<Self,HardwareError>{
         let mut driver = Self::default();
-        driver.i2c_handler = Some(handle_i2c_creation_error("/dev/i2c-2".to_string())?);
+        driver.i2c_handler = Some(i2c_creation("/dev/i2c-2".to_string())?);
         let mut pin = Pin::new(100);
-        handle_pin_export_error(pin)?;
-        handle_pin_direction_error(pin,Direction::In)?;
+        pin_export(pin)?;
+        pin_direction(pin,Direction::In)?;
 
         pin = Pin::new(101);
-        handle_pin_export_error(pin)?;
-        handle_pin_direction_error(pin,Direction::In)?;
+        pin_export(pin)?;
+        pin_direction(pin,Direction::In)?;
 
 
         pin = Pin::new(102);
-        handle_pin_export_error(pin)?;
-        handle_pin_direction_error(pin,Direction::In)?;
+        pin_export(pin)?;
+        pin_direction(pin,Direction::In)?;
 
         pin = Pin::new(103);
-        handle_pin_export_error(pin)?;
-        handle_pin_direction_error(pin,Direction::In)?;
-        //driver.configuration()?;
+        pin_export(pin)?;
+        pin_direction(pin,Direction::In)?;
+        driver.configuration()?;
         Ok(driver)
     }
     /// Configure l'état de base des MAX3109 afin d'avoir des interruptions lors de la réception de nouvelle donnée.
     /// Retourne une [`HardwareError`] en cas de problème
     fn configuration(&mut self) -> Result<(),HardwareError>{
-        let mut i2c_handler = match self.i2c_handler.as_mut() {
+        let pin = Pin::new(115);
+        pin_export(pin)?;
+        pin_direction(pin,Low)?;
+        let i2c_handler = match self.i2c_handler.as_mut() {
             None => {
                 Err(HardwareError::UnknownError("".to_string()))
             }
@@ -100,17 +104,20 @@ impl DriversCnRs232{
                 Ok(a)
             }
         }?;
+        pin_write(pin,1)?;
         for dt in DriverType::iter(){
+            i2c_set_slave(i2c_handler, Self::get_i2c_addr_value(dt) as u16, dt)?;
             match dt {
                 DriverType::EX |
                 DriverType::EY |
                 DriverType::RX |
                 DriverType::RY  => {
-                    handle_i2c_set_slave_error(i2c_handler, Self::get_i2c_addr_value(dt) as u16, dt)?;
-                    handle_i2c_write_error(i2c_handler, 0x01,0x40 , dt)?;
-                    handle_i2c_write_error(i2c_handler, 0x0A,0x08 , dt)?; // interruption pour la fifo du Rx non vide
-                    handle_i2c_write_error(i2c_handler, 0x0B,0x03 , dt)?; // taille de mot de 8
-                    handle_i2c_write_error(i2c_handler, 0x0C,0x01 , dt)?;
+                    i2c_write(i2c_handler,0x1E, 0x1A, dt)?; // utilise la clock externe
+                    i2c_write(i2c_handler,0x1C, 26u8, dt)?; // utilise la clock externe
+                    i2c_write(i2c_handler,0x1B, 1u8, dt)?; // utilise la clock externe
+                    i2c_write(i2c_handler,0x0A, 0x08, dt)?; // interupt sur remplisage RxFifo
+                    i2c_write(i2c_handler,0x01, 0x40, dt)?;
+                    i2c_write(i2c_handler,0x0B, 0x03, dt)?;
                 },
 
                 DriverType::EZ |
@@ -131,7 +138,7 @@ impl DriversCnRs232{
     pub fn write_i2c(&mut self, data: [u8; 9], type_cn : DriverType) -> Result<(),HardwareError>{
         let i2c_addr = Self::get_i2c_addr_value(type_cn);
         let iqr_pin = Self::get_iqr_pin(type_cn);
-        let mut i2c_handler = match self.i2c_handler.as_mut() {
+        let i2c_handler = match self.i2c_handler.as_mut() {
             None => {
                 Err(HardwareError::UnknownError("".to_string()))
             }
@@ -139,15 +146,15 @@ impl DriversCnRs232{
                 Ok(a)
             }
         }?;
-        handle_i2c_set_slave_error(i2c_handler, i2c_addr as u16,type_cn)?;
+        i2c_set_slave(i2c_handler, i2c_addr as u16,type_cn)?;
         for n in data.into_iter(){
-            handle_i2c_write_error(i2c_handler,0x00,n,type_cn)?;
+            i2c_write(i2c_handler,0x00,n,type_cn)?;
 
-            while handle_pin_read_error(iqr_pin)? == 1 {}
+            while pin_read(iqr_pin)? == 1 {}
 
-            handle_i2c_read_error(i2c_handler, 0x02, type_cn)?;
+            i2c_read(i2c_handler, 0x02, type_cn)?;
 
-            let g = handle_i2c_read_error(i2c_handler, 0x00, type_cn)?;
+            let g = i2c_read(i2c_handler, 0x00, type_cn)?;
 
             if g!=n {
                 return Err(HardwareError::BadI2cResponse(type_cn,g,n));
@@ -198,7 +205,7 @@ impl DriversCnRs232{
 impl Clone for DriversCnRs232 {
      fn clone(&self) -> Self {
          let mut clone = DriversCnRs232::default();
-         clone.i2c_handler = Some(handle_i2c_creation_error("/dev/i2c-2".to_string()).unwrap());
+         clone.i2c_handler = Some(i2c_creation("/dev/i2c-2".to_string()).unwrap());
          return clone;
      }
 }

@@ -171,10 +171,16 @@ impl Default for Arm {
 }
 impl Arm {
     pub fn new(is_emitter: bool) -> Self {
-        let mut arm = Self::default();
-        arm.is_emitter = is_emitter;
-        arm.origin();
-        return arm;
+        Self{
+            position: Position::new(
+                if is_emitter { -1417.0 } else { 1417.0 },
+                495.0,
+                0.0,
+                0.0,
+            ),
+            list_next : VecDeque::new(),
+            is_emitter
+        }
     }
     pub fn origin(&mut self) {
         self.list_next.push_front(Position::new(

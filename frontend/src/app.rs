@@ -977,34 +977,42 @@ impl TemplateApp {
             DriverType::EX => {
                 self.left.origin_x();
                 dum.push(dt);
+                dum.push(DriverType::E);
             }
             DriverType::EY => {
                 self.left.origin_y();
                 dum.push(dt);
+                dum.push(DriverType::E);
             }
             DriverType::EZ => {
                 self.left.origin_z();
                 dum.push(dt);
+                dum.push(DriverType::E);
             }
             DriverType::ETHETA => {
                 self.left.origin_theta();
                 dum.push(dt);
+                dum.push(DriverType::E);
             }
             DriverType::RX => {
                 self.right.origin_x();
                 dum.push(dt);
+                dum.push(DriverType::R);
             }
             DriverType::RY => {
                 self.right.origin_y();
                 dum.push(dt);
+                dum.push(DriverType::R);
             }
             DriverType::RZ => {
                 self.right.origin_z();
                 dum.push(dt);
+                dum.push(DriverType::R);
             }
             DriverType::RTHETA => {
                 self.right.origin_theta();
                 dum.push(dt);
+                dum.push(DriverType::R);
             }
         }
     }
