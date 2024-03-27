@@ -142,45 +142,6 @@ impl Position {
         self.theta = value;
     }
 
-    pub fn x_to_bytes(self) -> [u8; 9] {
-        let x = ((-6025.0 * self.x().abs()) as isize + 8539473) as usize;
-        let mut bytes: [u8; 9] = [0x08, 0x51, 0x00, 0x01, 0x00, 0x00, 0x00, 0x87, 0xff];
-        bytes[4] = (x >> 16) as u8;
-        bytes[5] = (x >> 8) as u8;
-        bytes[6] = (x & 0xff) as u8;
-        return bytes;
-    }
-
-    pub fn y_to_bytes(self) -> [u8; 9] {
-        let y = ((-6025.0 * self.y()) as isize + 2984423) as usize;
-        let mut bytes: [u8; 9] = [0x08, 0x51, 0x00, 0x01, 0x00, 0x00, 0x00, 0x87, 0xff];
-        bytes[4] = (y >> 16) as u8;
-        bytes[5] = (y >> 8) as u8;
-        bytes[6] = (y & 0xff) as u8;
-        return bytes;
-    }
-
-    pub fn z_to_bytes(self) -> [u8; 9] {
-        let z = ((6025.0 * self.z) as isize + 2048) as usize;
-        let mut bytes: [u8; 9] = [0x08, 0x51, 0x00, 0x01, 0x00, 0x00, 0x00, 0x87, 0xff];
-        bytes[4] = (z >> 16) as u8;
-        bytes[5] = (z >> 8) as u8;
-        bytes[6] = (z & 0xff) as u8;
-        return bytes;
-    }
-
-    pub fn theta_to_bytes(self) -> [u8; 9] {
-        let theta = ((5000.0 * self.theta / 9.0) as isize + 8388608) as usize;
-        let mut bytes: [u8; 9] = [0x08, 0x51, 0x00, 0x01, 0x00, 0x00, 0x00, 0x87, 0xff];
-        bytes[4] = (theta >> 16) as u8;
-        bytes[5] = (theta >> 8) as u8;
-        bytes[6] = (theta & 0xff) as u8;
-        return bytes;
-    }
-
-    pub fn to_bytes(self) -> [[u8; 9]; 4] {
-        return [self.x_to_bytes(), self.y_to_bytes(), self.z_to_bytes(), self.theta_to_bytes()];
-    }
 }
 
 impl Display for Position {

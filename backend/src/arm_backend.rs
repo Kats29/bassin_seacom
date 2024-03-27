@@ -7,7 +7,6 @@ use sysfs_gpio::{Direction, Pin};
 
 use common::{
     definitions::{
-        Arm,
         Command,
         Doors,
         DriverType,
@@ -21,8 +20,12 @@ use crate::driver_cn_pin::DriverCnPin;
 use crate::drivers_cn_rs232::DriversCnRs232;
 use crate::error_handler::{handle_pin_direction_error, handle_pin_export_error, handle_pin_read_error, handle_pin_set_active_low, handle_pin_write_error};
 
+
+/// Liste des erreurs de l'update courante
 pub static ERR_LIST: Mutex<RefCell<Vec<Result<(), HardwareError>>>> = Mutex::new(RefCell::new(vec![]));
 
+
+/// Structure regroupant tout les drivers et les [`sysfs_gpio::Pin`] nécessaire pour faire fonctionné le bassin
 pub struct ArmsBackend {
     driver_x_emetteur: DriverCnPin,
     driver_y_emetteur: DriverCnPin,
@@ -147,8 +150,9 @@ impl ArmsBackend {
         handle_pin_direction_error(self.pin_porte_gauche_haut, Direction::In)?;
         handle_pin_direction_error(self.pin_porte_droite_bas, Direction::In)?;
         handle_pin_direction_error(self.pin_porte_droite_haut, Direction::In)
-    }
 
+    }
+    /// Fonction permettant le renvoie d'un [`Status`] codant l'état actuelle du bassin
     pub fn check_status(&self) -> Status {
         let tmp = ERR_LIST.lock().unwrap();
         let mut vec_error = tmp.borrow_mut();
@@ -360,6 +364,8 @@ impl ArmsBackend {
         return status;
     }
 
+
+    /// Fonction modifant le bassin en fonction de la [`Command`] choisis
     pub fn update(&mut self, command: Command) -> Result<(), HardwareError> {
         match command {
             Command::Go(dt, next_e, next_r) => {
@@ -383,9 +389,16 @@ impl ArmsBackend {
         }
     }
 
+
+    /// Fonction qui envoie au [`DriversCnRs232`] les positions a écrire en fonction du drivers a utiliser
+    /// La fonction utilise [`DriversCnRs232::write_i2c`] pour écrire et transforme les positions grâce a
+    /// [`DriversCnRs232::x_to_bytes`], [`DriversCnRs232::y_to_bytes`], [`DriversCnRs232::z_to_bytes`] ou
+    /// [`DriversCnRs232::theta_to_bytes`] suivant le drivers voulut.
+    /// La fonction utilise de la récursivité pour écrit les positions pour ces type de drivers :
+    /// [`DriverType::E`], [`DriverType::R`] et [`DriverType::ALL`]
     pub fn write_go(&mut self, driver_type: DriverType, pos_e: Position, pos_r: Position) -> Result<(), HardwareError> {
         match driver_type {
-            DriverType::EX => self.driver_rs232.write_i2c(pos_e.x_to_bytes(), driver_type),
+            DriverType::EX => self.driver_rs232.write_i2c(pos_e, driver_type),
             DriverType::EY => self.driver_rs232.write_i2c(pos_e.y_to_bytes(), driver_type),
             DriverType::EZ => self.driver_rs232.write_i2c(pos_e.z_to_bytes(), driver_type),
             DriverType::ETHETA => self.driver_rs232.write_i2c(pos_e.theta_to_bytes(), driver_type),
@@ -413,21 +426,14 @@ impl ArmsBackend {
                 Ok(())
             }
         }
-        /*
-        // A changer pour plus de synchro
-        self.driver_x_emetteur.go()?;
-        self.driver_y_emetteur.go()?;
-        self.driver_z_emetteur.go()?;
-        self.driver_t_emetteur.go()?;
-
-        self.driver_x_recepteur.go()?;
-        self.driver_y_recepteur.go()?;
-        self.driver_z_recepteur.go()?;
-        self.driver_t_recepteur.go()?;
-
-        Ok(())*/
     }
 
+    /// Fonction qui envoie au [`DriverCnPin`] la command d'envoie de Go au bassin.
+    /// La fonction utilise [`DriverCnPin::go`] pour le faire. Le driver utilisé est défini en fonction du
+    /// [`DriverType`] utilisé en paramètre.
+    /// La fonction utilise de la récursivité pour écrit les positions pour ces types de driver :
+    /// [`DriverType::E`], [`DriverType::R`] et [`DriverType::ALL`]
+    /// Lors de l'utilisation de la récussivité, les différentes fonctions à
     #[async_recursion]
     pub async fn pin_go(&self, driver_type: DriverType) -> Result<(), HardwareError> {
         match driver_type {
@@ -459,7 +465,7 @@ impl ArmsBackend {
                 if ERR_LIST.lock().unwrap().borrow().is_empty() {
                     return Ok(());
                 }
-                Err(HardwareError::UnknownError)
+                Err(HardwareError::UnknownError("".to_string()))
             }
             DriverType::E => {
                 let x = self.pin_go(DriverType::EX);
@@ -481,7 +487,7 @@ impl ArmsBackend {
                 if ERR_LIST.lock().unwrap().borrow().is_empty() {
                     return Ok(());
                 }
-                Err(HardwareError::UnknownError)
+                Err(HardwareError::UnknownError("".to_string()))
             }
             DriverType::ALL => {
                 let r = self.pin_go(DriverType::R);
@@ -500,7 +506,7 @@ impl ArmsBackend {
                 if ERR_LIST.lock().unwrap().borrow().is_empty() {
                     return Ok(());
                 }
-                Err(HardwareError::UnknownError)
+                Err(HardwareError::UnknownError("".to_string()))
             }
         }
     }
@@ -546,7 +552,7 @@ impl ArmsBackend {
                 if ERR_LIST.lock().unwrap().borrow().is_empty() {
                     return Ok(());
                 }
-                Err(HardwareError::UnknownError)
+                Err(HardwareError::UnknownError("".to_string()))
             }
             DriverType::E => {
                 let x = self.reset(DriverType::EX);
@@ -568,7 +574,7 @@ impl ArmsBackend {
                 if ERR_LIST.lock().unwrap().borrow().is_empty() {
                     return Ok(());
                 }
-                Err(HardwareError::UnknownError)
+                Err(HardwareError::UnknownError("".to_string()))
             }
             DriverType::ALL => {
                 let r = self.reset(DriverType::R);
@@ -587,7 +593,7 @@ impl ArmsBackend {
                 if ERR_LIST.lock().unwrap().borrow().is_empty() {
                     return Ok(());
                 }
-                Err(HardwareError::UnknownError)
+                Err(HardwareError::UnknownError("".to_string()))
             }
         }
     }

@@ -9,11 +9,10 @@ use std::sync::Mutex;
 use console_error_panic_hook;
 use console_log;
 use eframe::egui;
-use egui::Ui;
+use egui::{Color32, Ui};
 use egui_extras::install_image_loaders;
 use egui_modal::Modal;
-use futures::executor::block_on;
-use log::{debug, error, info, Level};
+use log::{error, info, Level};
 use rfd;
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -147,7 +146,7 @@ impl TemplateApp {
                                 match e {
                                     I2cSetSlave(_, dt) |
                                     I2cRead(dt, _) |
-                                    I2cWrite(dt, _) |
+                                    I2cWrite(dt, _, _) |
                                     BadI2cResponse(dt, _, _) |
                                     MovmentNotFinished(dt) => {
                                         let du = DRIVER_USED.lock().unwrap();
@@ -198,8 +197,8 @@ impl TemplateApp {
                         rect.min + egui::vec2(5.0, 5.0),
                         5.0,
                         match self.stream.status.borrow().deref() {
-                            wasm_sockets::ConnectionStatus::Connected => egui::Color32::GREEN,
-                            _ => egui::Color32::RED
+                            wasm_sockets::ConnectionStatus::Connected => Color32::GREEN,
+                            _ => Color32::RED
                         },
                     );
                 });
@@ -216,12 +215,12 @@ impl TemplateApp {
                         match STATUS.lock().unwrap().borrow().as_ref() {
                             Some(status) => {
                                 if status.door_left_open() {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 } else {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -238,12 +237,12 @@ impl TemplateApp {
                         match STATUS.lock().unwrap().borrow().as_ref() {
                             Some(status) => {
                                 if status.door_right_open() {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 } else {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -260,12 +259,12 @@ impl TemplateApp {
                         match STATUS.lock().unwrap().borrow().as_ref() {
                             Some(status) => {
                                 if status.bassin_powered() {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 } else {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -282,12 +281,12 @@ impl TemplateApp {
                         match STATUS.lock().unwrap().borrow().as_ref() {
                             Some(status) => {
                                 if status.bassin_started() {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 } else {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -304,12 +303,12 @@ impl TemplateApp {
                         match STATUS.lock().unwrap().borrow().as_ref() {
                             Some(status) => {
                                 if status.arr_urg() {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 } else {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -326,12 +325,12 @@ impl TemplateApp {
                         match STATUS.lock().unwrap().borrow().as_ref() {
                             Some(status) => {
                                 if status.arr_mom() {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 } else {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -415,12 +414,12 @@ impl TemplateApp {
                                 } else {
                                     status.movement_rx()
                                 } {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 } else {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -459,12 +458,12 @@ impl TemplateApp {
                                 } else {
                                     status.movement_ry()
                                 } {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 } else {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -503,12 +502,12 @@ impl TemplateApp {
                                 } else {
                                     status.movement_rz()
                                 } {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 } else {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -547,12 +546,12 @@ impl TemplateApp {
                                 } else {
                                     status.movement_rt()
                                 } {
-                                    egui::Color32::RED
+                                    Color32::RED
                                 } else {
-                                    egui::Color32::GREEN
+                                    Color32::GREEN
                                 }
                             }
-                            None => egui::Color32::GREEN
+                            None => Color32::GREEN
                         },
                     );
                 });
@@ -668,7 +667,7 @@ impl TemplateApp {
                         margin.left = ui.available_width() / 2.0 - width - 45.0;
                         margin
                     })
-                    .fill(egui::Color32::LIGHT_BLUE)
+                    .fill(Color32::LIGHT_BLUE)
                     .rounding(egui::Rounding::same(10.0))
                     .show(ui, |ui| {
                         ui.horizontal(|ui| {
@@ -697,7 +696,7 @@ impl TemplateApp {
                         margin.left = ui.available_width() / 2.0 - width - 45.0;
                         margin
                     })
-                    .fill(egui::Color32::LIGHT_BLUE)
+                    .fill(Color32::LIGHT_BLUE)
                     .rounding(egui::Rounding::same(10.0))
                     .show(ui, |ui| {
                         ui.horizontal(|ui| {
@@ -737,7 +736,7 @@ impl TemplateApp {
 
         egui::Frame::none()
             .inner_margin(egui::Margin::ZERO)
-            .stroke(egui::Stroke::new(2.0, egui::Color32::BLACK))
+            .stroke(egui::Stroke::new(2.0, Color32::BLACK))
             .rounding(rounding)
             .show(ui, |ui| {
                 ui.set_width(width + 30.0);
@@ -808,7 +807,7 @@ impl TemplateApp {
                     egui::include_image!("../assets/emitter.png")
                 )
                     .max_size(egui::vec2(30.0, 30.0))
-                    .tint(egui::Color32::from_rgba_premultiplied(
+                    .tint(Color32::from_rgba_premultiplied(
                         0,
                         0,
                         0,
@@ -885,27 +884,24 @@ impl TemplateApp {
                         },
                     );
 
+
+                    let couleur = Color32::from_rgba_premultiplied(
+                        if i == 0 && !DRIVER_USED.lock().unwrap().borrow().is_empty() { 128 } else { 0 },
+                        0,
+                        0,
+                        100,
+                    );
                     ui.painter().circle_filled(
                         list_pos,
                         2.5,
-                        egui::Color32::from_rgba_premultiplied(
-                            if i == 0 && !DRIVER_USED.lock().unwrap().borrow().is_empty() { 128 } else { 0 },
-                            0,
-                            0,
-                            100,
-                        ),
+                        couleur,
                     );
 
                     ui.painter().line_segment(
                         [prev_pos, list_pos],
                         egui::Stroke::new(
                             1.0,
-                            egui::Color32::from_rgba_premultiplied(
-                                if i == 0 && !DRIVER_USED.lock().unwrap().borrow().is_empty() { 128 } else { 0 },
-                                0,
-                                0,
-                                100,
-                            ),
+                            couleur,
                         ),
                     );
 
@@ -924,7 +920,7 @@ impl TemplateApp {
                             left_next.iter().for_each(|pos| self.left.add_next(*pos));
                             self.right.del_list();
                             right_next.iter().for_each(|pos| self.right.add_next(*pos));
-                        },
+                        }
                         Err(_) => ERR_LIST.lock().unwrap().push(HardwareError::UnknownError("Format de fichier invalide".to_string()))
                     }
                 }
@@ -953,6 +949,7 @@ impl TemplateApp {
                 dum.push(DriverType::EY);
                 dum.push(DriverType::EZ);
                 dum.push(DriverType::ETHETA);
+                dum.push(DriverType::E);
             }
             DriverType::R => {
                 self.right.origin();
@@ -960,6 +957,7 @@ impl TemplateApp {
                 dum.push(DriverType::RY);
                 dum.push(DriverType::RZ);
                 dum.push(DriverType::RTHETA);
+                dum.push(DriverType::R);
             }
             DriverType::ALL => {
                 self.right.origin();
@@ -968,11 +966,13 @@ impl TemplateApp {
                 dum.push(DriverType::EY);
                 dum.push(DriverType::EZ);
                 dum.push(DriverType::ETHETA);
+                dum.push(DriverType::E);
 
                 dum.push(DriverType::RX);
                 dum.push(DriverType::RY);
                 dum.push(DriverType::RZ);
                 dum.push(DriverType::RTHETA);
+                dum.push(DriverType::R);
             }
             DriverType::EX => {
                 self.left.origin_x();
@@ -1026,26 +1026,36 @@ impl TemplateApp {
                 dum.push(DriverType::EY);
                 dum.push(DriverType::EZ);
                 dum.push(DriverType::ETHETA);
+                dum.push(DriverType::E);
             }
             DriverType::R => {
                 dum.push(DriverType::RX);
                 dum.push(DriverType::RY);
                 dum.push(DriverType::RZ);
                 dum.push(DriverType::RTHETA);
+                dum.push(DriverType::R);
             }
             DriverType::ALL => {
                 dum.push(DriverType::EX);
                 dum.push(DriverType::EY);
                 dum.push(DriverType::EZ);
                 dum.push(DriverType::ETHETA);
+                dum.push(DriverType::E);
 
                 dum.push(DriverType::RX);
                 dum.push(DriverType::RY);
                 dum.push(DriverType::RZ);
                 dum.push(DriverType::RTHETA);
+                dum.push(DriverType::R);
             }
-            _ => {
+            DriverType::EX | DriverType::EY | DriverType::EZ | DriverType::ETHETA => {
                 dum.push(dt);
+                dum.push(DriverType::E);
+            }
+
+            DriverType::RX | DriverType::RY | DriverType::RZ | DriverType::RTHETA => {
+                dum.push(dt);
+                dum.push(DriverType::R);
             }
         }
     }
@@ -1228,11 +1238,8 @@ impl eframe::App for TemplateApp {
                         match dt {
                             DriverType::EX => {
                                 if !status.movement_ex() {
-                                    if !(dum.contains(&DriverType::EY) || dum.contains(&DriverType::EZ) || dum.contains(&DriverType::ETHETA)) {
-                                        self.left.move_next();
-                                    } else {
-                                        self.left.move_next_x();
-                                    }
+                                    self.left.move_next_x();
+
                                     dum.remove(i.try_into().unwrap());
                                     info!("index : {} \n lentgh : {}",i,dum.len());
                                     i = i - 1;
@@ -1240,22 +1247,15 @@ impl eframe::App for TemplateApp {
                             }
                             DriverType::EY => {
                                 if !status.movement_ey() {
-                                    if !(dum.contains(&DriverType::EX) || dum.contains(&DriverType::EZ) || dum.contains(&DriverType::ETHETA)) {
-                                        self.left.move_next();
-                                    } else {
-                                        self.left.move_next_y();
-                                    }
+                                    self.left.move_next_y();
+
                                     dum.remove(i.try_into().unwrap());
                                     i = i - 1;
                                 }
                             }
                             DriverType::EZ => {
                                 if !status.movement_ez() {
-                                    if !(dum.contains(&DriverType::EY) || dum.contains(&DriverType::EX) || dum.contains(&DriverType::ETHETA)) {
-                                        self.left.move_next();
-                                    } else {
-                                        self.left.move_next_z();
-                                    }
+                                    self.left.move_next_z();
                                     dum.remove(i.try_into().unwrap());
                                     i = i - 1;
                                 }
@@ -1263,9 +1263,7 @@ impl eframe::App for TemplateApp {
                             DriverType::ETHETA => {
                                 if !status.movement_et() {
                                     self.left.move_next_theta();
-                                    if !(dum.contains(&DriverType::EY) || dum.contains(&DriverType::EZ) || dum.contains(&DriverType::EX)) {
-                                        self.left.move_next();
-                                    }
+
                                     dum.remove(i.try_into().unwrap());
                                     i = i - 1;
                                 }
@@ -1299,9 +1297,22 @@ impl eframe::App for TemplateApp {
                                     i = i - 1;
                                 }
                             }
+                            DriverType::E => {
+                                if !(dum.contains(&DriverType::EX) || dum.contains(&DriverType::EY) || dum.contains(&DriverType::EX) || dum.contains(&DriverType::ETHETA)) {
+                                    self.left.move_next();
+                                }
+                                dum.remove(i.try_into().unwrap());
+                                i = i - 1;
+                            }
+                            DriverType::R => {
+                                if !(dum.contains(&DriverType::RX) || dum.contains(&DriverType::RY) || dum.contains(&DriverType::RX) || dum.contains(&DriverType::RTHETA)) {
+                                    self.right.move_next();
+                                }
+                                dum.remove(i.try_into().unwrap());
+                                i = i - 1;
+                            }
                             _ => {}
                         }
-                        info!("{}, {:?}, {}", dt, dum, (dum.contains(&DriverType::EY) || dum.contains(&DriverType::EZ) || dum.contains(&DriverType::EX)));
                     }
                     None => {}
                 }

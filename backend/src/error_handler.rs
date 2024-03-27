@@ -87,7 +87,7 @@ pub fn handle_pin_set_active_low(pin: Pin, activ_low: bool) -> Result<(), Hardwa
         }
         Err(_) => {
             write_error_log(format!("Unable to set GPIO_{} active at low", pin.get_pin()));
-            Err(HardwareError::UnknownError)
+            Err(HardwareError::UnknownError("".to_string()))
         }
     }
 }
@@ -126,7 +126,7 @@ pub fn handle_i2c_write_error(i2c: &mut I2c<File>, command: u8, data: u8, driver
         }
         Err(_) => {
             write_error_log(format!("Could not write data({:#04x}) to the address({:#04x}) of the {} i2c", data, command, driver_type));
-            Err(HardwareError::I2cWrite(driver_type, data))
+            Err(HardwareError::I2cWrite(driver_type, data,command))
         }
     }
 }
