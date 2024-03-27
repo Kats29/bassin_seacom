@@ -132,7 +132,15 @@ La première chose à faire pour allumer le bassin est de le mettre physiquement
 
 #### Allumer le bassin
 
+Pour allumer le bassin, allez dans le menu `Alimentation` et cliquez sur `Démarrer`. Après un démarrage de cette façon, une commande de RESET (expliquée plus loin) et de remise à l'origine doivent obligatoirement être effectuées dans cet ordre.
+
+Après appui, les indicateurs `Bassin alimenté` et `Bassin démarré` devraient être au vert.
+
 #### Éteindre le bassin
+
+Une fois le bassin sous tension et démarré, le menu `Alimentation` devrait contenir un bouton `Arrêter`, qui doit éteindre le bassin.
+
+Après appui, l'indicateur `Bassin démarré` devrait repasser au rouge.
 
 #### Redémarrage des commandes numériques (RESET)
 
@@ -143,6 +151,7 @@ La première chose à faire pour allumer le bassin est de le mettre physiquement
 #### Supprimer un mouvement
 
 #### Modifier un mouvement
+
 
 ### Effectuer un mouvement
 
