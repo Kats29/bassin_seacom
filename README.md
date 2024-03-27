@@ -76,6 +76,24 @@ Tapez à nouveau le mot de passe.
 
 Vous pouvez à présent vous connecter à l'interface depuis votre navigateur internet, en tapant `bassin.local` dans la barre d'adresse.
 
+## Branchement
+
+### Installation de la Beaglebone
+
+### Raccordement réseau
+
+### Communication avec le bassin
+
+## Documentation
+
+Une fois le projet cloné, la documentation technique du code peut être générée grâce à la commande :
+
+```sh
+make doc
+```
+
+La documentation devrait s'ouvrir dans un navigateur. Sinon, elle peut être visualisée dans un navigateur en ouvrant les fichiers `index.html` générés dans `target/doc/common`, `target/armv7-unknown-linux-musleabihf/doc/backend` et `target/wasm32-unknown-unknown/doc/frontend`
+
 ## Utilisation
 
 ![Interface de contrôle](interface.gif)
@@ -90,15 +108,27 @@ La vue centrale représente une visualisation de l'état actuel du bassin, ainsi
 
 Sa partie supérieure montre une vue du dessus en séparant les moitiés droite et gauche du bassin. La même séparation est visible sur la partie inférieure, qui elle montre une vue de côté du bassin (pour visualiser la profondeur).
 
-Les cadres noirs délimitent les zones où chacun des deux bras peut se déplacer, et les symboles <span style="display=inline-block; background-color='gray'"><img src="frontend/assets/emitter.png" width="20"></span> en noir symbolysent la position actuelle de chaque bras.
+Les cadres noirs délimitent les zones où chacun des deux bras peut se déplacer, et les symboles <img src="frontend/assets/emitter.png" width="20"> en noir symbolisent la position actuelle de chaque bras. Les symboles <img src="frontend/assets/emitter.png" width="20"> grisés montrent le prochain mouvement pouvant être ajouté.
 
 #### Panneau gauche
 
+Le panneau latéral gauche montre deux choses :
+
+* Les coordonnées du prochain mouvement à ajouter pour chaque bras.
+
+* L'état actuel du bassin, sous formes d'indicateurs colorés (rouges ou verts, gris si le bassin n'est pas connecté).
+	* En face de chaque coordonnée, un indicateur passe au rouge si un mouvement est en cours sur cet axe.
+	* Sous les coordonnées, d'autres informations sont données sous cette forme.
+
 #### Panneau droit
+
+Le panneau latéral droit montre simplement la liste des mouvement prévus pour chaque bras, dans l'ordre chronologique.
 
 #### Fenêtre d'erreur
 
 ### Commandes d'alimentation
+
+La première chose à faire pour allumer le bassin est de le mettre physiquement sous tension. Une fois que c'est fait, l'alimentation peut être contrôlée à distance par l'interface.
 
 #### Allumer le bassin
 

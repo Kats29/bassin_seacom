@@ -12,4 +12,6 @@ frontend: frontend/src/*
 common: common/src/*
 
 doc :
-	cargo doc -p backend --target=armv7-unknown-linux-musleabihf;cargo doc -p frontend --target=wasm32-unknown-unknown;cargo doc -p common;
+	cargo rustdoc -p backend --target=armv7-unknown-linux-musleabihf --open
+	cargo rustdoc -p common --open
+	cargo rustdoc -p frontend --target=wasm32-unknown-unknown --open
