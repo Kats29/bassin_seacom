@@ -65,7 +65,7 @@ impl Default for TemplateApp {
         let left_arm = Arm::new(true);
         let right_arm = Arm::new(false);
         let client = Self::connect("wss://bassin.local:3333");
-        STATUS.lock().unwrap().replace(Some(Status::new(
+        /*STATUS.lock().unwrap().replace(Some(Status::new(
             false,
             false,
             true,
@@ -80,7 +80,7 @@ impl Default for TemplateApp {
             false,
             false,
             false,
-        )));
+        )));*/
         Self {
             left: left_arm.clone(),
             right: right_arm.clone(),
@@ -220,7 +220,7 @@ impl TemplateApp {
                                     Color32::GREEN
                                 }
                             }
-                            None => Color32::GREEN
+                            None => Color32::GRAY
                         },
                     );
                 });
@@ -242,7 +242,7 @@ impl TemplateApp {
                                     Color32::GREEN
                                 }
                             }
-                            None => Color32::GREEN
+                            None => Color32::GRAY
                         },
                     );
                 });
@@ -264,7 +264,7 @@ impl TemplateApp {
                                     Color32::RED
                                 }
                             }
-                            None => Color32::GREEN
+                            None => Color32::GRAY
                         },
                     );
                 });
@@ -286,7 +286,7 @@ impl TemplateApp {
                                     Color32::RED
                                 }
                             }
-                            None => Color32::GREEN
+                            None => Color32::GRAY
                         },
                     );
                 });
@@ -308,7 +308,7 @@ impl TemplateApp {
                                     Color32::GREEN
                                 }
                             }
-                            None => Color32::GREEN
+                            None => Color32::GRAY
                         },
                     );
                 });
@@ -330,7 +330,7 @@ impl TemplateApp {
                                     Color32::GREEN
                                 }
                             }
-                            None => Color32::GREEN
+                            None => Color32::GRAY
                         },
                     );
                 });
@@ -419,7 +419,7 @@ impl TemplateApp {
                                     Color32::GREEN
                                 }
                             }
-                            None => Color32::GREEN
+                            None => Color32::GRAY
                         },
                     );
                 });
@@ -463,7 +463,7 @@ impl TemplateApp {
                                     Color32::GREEN
                                 }
                             }
-                            None => Color32::GREEN
+                            None => Color32::GRAY
                         },
                     );
                 });
@@ -507,7 +507,7 @@ impl TemplateApp {
                                     Color32::GREEN
                                 }
                             }
-                            None => Color32::GREEN
+                            None => Color32::GRAY
                         },
                     );
                 });
@@ -551,7 +551,7 @@ impl TemplateApp {
                                     Color32::GREEN
                                 }
                             }
-                            None => Color32::GREEN
+                            None => Color32::GRAY
                         },
                     );
                 });
