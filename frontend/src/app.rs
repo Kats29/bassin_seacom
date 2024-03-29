@@ -1062,12 +1062,10 @@ impl TemplateApp {
             }
             DriverType::EX | DriverType::EY | DriverType::EZ | DriverType::ETHETA => {
                 dum.push(dt);
-                dum.push(DriverType::E);
             }
 
             DriverType::RX | DriverType::RY | DriverType::RZ | DriverType::RTHETA => {
                 dum.push(dt);
-                dum.push(DriverType::R);
             }
         }
     }
@@ -1253,7 +1251,11 @@ impl eframe::App for TemplateApp {
                                 DriverType::EX => {
                                     if !status.movement_ex() {
                                         self.left.move_next_x();
-
+                                        if let Some(next) = self.left.next() {
+                                            if self.left.position() == next {
+                                                self.left.move_next();
+                                            }
+                                        }
                                         dum.remove(i.try_into().unwrap());
                                         info!("index : {} \n lentgh : {}",i,dum.len());
                                         i = i - 1;
@@ -1262,7 +1264,11 @@ impl eframe::App for TemplateApp {
                                 DriverType::EY => {
                                     if !status.movement_ey() {
                                         self.left.move_next_y();
-
+                                        if let Some(next) = self.left.next() {
+                                            if self.left.position() == next {
+                                                self.left.move_next();
+                                            }
+                                        }
                                         dum.remove(i.try_into().unwrap());
                                         i = i - 1;
                                     }
@@ -1270,6 +1276,11 @@ impl eframe::App for TemplateApp {
                                 DriverType::EZ => {
                                     if !status.movement_ez() {
                                         self.left.move_next_z();
+                                        if let Some(next) = self.left.next() {
+                                            if self.left.position() == next {
+                                                self.left.move_next();
+                                            }
+                                        }
                                         dum.remove(i.try_into().unwrap());
                                         i = i - 1;
                                     }
@@ -1277,7 +1288,11 @@ impl eframe::App for TemplateApp {
                                 DriverType::ETHETA => {
                                     if !status.movement_et() {
                                         self.left.move_next_theta();
-
+                                        if let Some(next) = self.left.next() {
+                                            if self.left.position() == next {
+                                                self.left.move_next();
+                                            }
+                                        }
                                         dum.remove(i.try_into().unwrap());
                                         i = i - 1;
                                     }
@@ -1286,6 +1301,11 @@ impl eframe::App for TemplateApp {
                                 DriverType::RX => {
                                     if !status.movement_rx() {
                                         self.right.move_next_x();
+                                        if let Some(next) = self.right.next() {
+                                            if self.right.position() == next {
+                                                self.right.move_next();
+                                            }
+                                        }
                                         dum.remove(i.try_into().unwrap());
                                         i = i - 1;
                                     }
@@ -1293,6 +1313,11 @@ impl eframe::App for TemplateApp {
                                 DriverType::RY => {
                                     if !status.movement_ry() {
                                         self.right.move_next_y();
+                                        if let Some(next) = self.right.next() {
+                                            if self.right.position() == next {
+                                                self.right.move_next();
+                                            }
+                                        }
                                         dum.remove(i.try_into().unwrap());
                                         i = i - 1;
                                     }
@@ -1300,6 +1325,11 @@ impl eframe::App for TemplateApp {
                                 DriverType::RZ => {
                                     if !status.movement_rz() {
                                         self.right.move_next_z();
+                                        if let Some(next) = self.right.next() {
+                                            if self.right.position() == next {
+                                                self.right.move_next();
+                                            }
+                                        }
                                         dum.remove(i.try_into().unwrap());
                                         i = i - 1;
                                     }
@@ -1307,6 +1337,11 @@ impl eframe::App for TemplateApp {
                                 DriverType::RTHETA => {
                                     if !status.movement_rt() {
                                         self.right.move_next_theta();
+                                        if let Some(next) = self.right.next() {
+                                            if self.right.position() == next {
+                                                self.right.move_next();
+                                            }
+                                        }
                                         dum.remove(i.try_into().unwrap());
                                         i = i - 1;
                                     }
@@ -1315,19 +1350,19 @@ impl eframe::App for TemplateApp {
                                     if let Some(next) = self.left.next() {
                                         if self.left.position() == next {
                                             self.left.move_next();
+                                            dum.remove(i.try_into().unwrap());
+                                            i = i - 1;
                                         }
                                     }
-                                    dum.remove(i.try_into().unwrap());
-                                    i = i - 1;
                                 }
                                 DriverType::R => {
                                     if let Some(next) = self.right.next() {
                                         if self.right.position() == next {
                                             self.right.move_next();
+                                            dum.remove(i.try_into().unwrap());
+                                            i = i - 1;
                                         }
                                     }
-                                    dum.remove(i.try_into().unwrap());
-                                    i = i - 1;
                                 }
                                 _ => {}
                             }
