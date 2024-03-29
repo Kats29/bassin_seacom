@@ -1195,6 +1195,16 @@ impl eframe::App for TemplateApp {
                                 self.arr_urg(true);
                             }
                         }
+                        if status.arr_mom() {
+                            if ui.button("Suspendre").clicked() {
+                                self.send(Command::ArrMom);
+                            }
+                        }
+                        else {
+                            if ui.button("Reprendre").clicked() {
+                                self.send(Command::StopArrMom);
+                            }
+                        }
                     }
                     None => {
                         ui.add_enabled(false, egui::Button::new("Alimentation"));
@@ -1204,15 +1214,12 @@ impl eframe::App for TemplateApp {
                 if ui.button("Origine").clicked() {
                     self.origin(DriverType::ALL);
                 }
-                if ui.button("Go").clicked() {
-                    self.move_next(DriverType::ALL);
-                }
-                if ui.button("Arr Mom").clicked() {
-                    self.send(Command::ArrMom);
-                }
                 if ui.button("Origine Rapide").clicked() {
                     self.left.origin();
                     self.right.origin();
+                    self.move_next(DriverType::ALL);
+                }
+                if ui.button("Go").clicked() {
                     self.move_next(DriverType::ALL);
                 }
                 ui.menu_button("Fichier", |ui| {
