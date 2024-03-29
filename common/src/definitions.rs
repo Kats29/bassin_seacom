@@ -78,7 +78,7 @@ pub enum Command {
 
 
 ///Structure sauvegardant la possition de 4 axes, x, y, z et θ
-#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug, PartialEq)]
 #[serde(default)]
 pub struct Position {
     x: f32,

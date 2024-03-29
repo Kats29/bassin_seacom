@@ -40,6 +40,7 @@ use common::{
 pub static ERR_LIST: Mutex<Vec<HardwareError>> = Mutex::new(vec![]);
 pub static DRIVER_USED: Mutex<RefCell<Vec<DriverType>>> = Mutex::new(RefCell::new(vec![]));
 pub static STATUS: Mutex<RefCell<Option<Status>>> = Mutex::new(RefCell::new(None));
+pub static STATUS_RECEIVE: Mutex<RefCell<bool>> = Mutex::new(RefCell::new(false));
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(Deserialize, Serialize)]
@@ -169,6 +170,7 @@ impl TemplateApp {
                     }
                 } else if let Ok(status) = serde_json::from_str::<Status>(mess.as_str()) {
                     STATUS.lock().unwrap().replace(Some(status));
+                    STATUS_RECEIVE.lock().unwrap().replace(true);
                 } else {
                     error!("JSON conversion error");
                 }
@@ -936,6 +938,8 @@ impl TemplateApp {
             .expect("JSON conversion error");
 
         self.stream.send_string(msg.as_str()).unwrap();
+
+        STATUS_RECEIVE.lock().unwrap().replace(false);
     }
 
     pub fn origin(&mut self, dt: DriverType) {
@@ -1232,100 +1236,107 @@ impl eframe::App for TemplateApp {
             ui.add_space(10.0);
         });
 
-        let du = DRIVER_USED.lock().unwrap();
+        if *STATUS_RECEIVE.lock().unwrap().borrow().deref() {
 
-        let mut dum = du.borrow_mut();
-        let mut i = 0isize;
-        loop {
-            if i >= (dum.len() as isize) {
-                break;
-            } else {
-                let dt = dum[i as usize];
-                match STATUS.lock().unwrap().borrow().as_ref() {
-                    Some(status) => {
-                        match dt {
-                            DriverType::EX => {
-                                if !status.movement_ex() {
-                                    self.left.move_next_x();
+            let du = DRIVER_USED.lock().unwrap();
 
-                                    dum.remove(i.try_into().unwrap());
-                                    info!("index : {} \n lentgh : {}",i,dum.len());
-                                    i = i - 1;
-                                }
-                            }
-                            DriverType::EY => {
-                                if !status.movement_ey() {
-                                    self.left.move_next_y();
+            let mut dum = du.borrow_mut();
+            let mut i = 0isize;
+            loop {
+                if i >= (dum.len() as isize) {
+                    break;
+                } else {
+                    let dt = dum[i as usize];
+                    match STATUS.lock().unwrap().borrow().as_ref() {
+                        Some(status) => {
+                            match dt {
+                                DriverType::EX => {
+                                    if !status.movement_ex() {
+                                        self.left.move_next_x();
 
-                                    dum.remove(i.try_into().unwrap());
-                                    i = i - 1;
+                                        dum.remove(i.try_into().unwrap());
+                                        info!("index : {} \n lentgh : {}",i,dum.len());
+                                        i = i - 1;
+                                    }
                                 }
-                            }
-                            DriverType::EZ => {
-                                if !status.movement_ez() {
-                                    self.left.move_next_z();
-                                    dum.remove(i.try_into().unwrap());
-                                    i = i - 1;
-                                }
-                            }
-                            DriverType::ETHETA => {
-                                if !status.movement_et() {
-                                    self.left.move_next_theta();
+                                DriverType::EY => {
+                                    if !status.movement_ey() {
+                                        self.left.move_next_y();
 
-                                    dum.remove(i.try_into().unwrap());
-                                    i = i - 1;
+                                        dum.remove(i.try_into().unwrap());
+                                        i = i - 1;
+                                    }
                                 }
-                            }
+                                DriverType::EZ => {
+                                    if !status.movement_ez() {
+                                        self.left.move_next_z();
+                                        dum.remove(i.try_into().unwrap());
+                                        i = i - 1;
+                                    }
+                                }
+                                DriverType::ETHETA => {
+                                    if !status.movement_et() {
+                                        self.left.move_next_theta();
 
-                            DriverType::RX => {
-                                if !status.movement_rx() {
-                                    self.right.move_next_x();
+                                        dum.remove(i.try_into().unwrap());
+                                        i = i - 1;
+                                    }
+                                }
+
+                                DriverType::RX => {
+                                    if !status.movement_rx() {
+                                        self.right.move_next_x();
+                                        dum.remove(i.try_into().unwrap());
+                                        i = i - 1;
+                                    }
+                                }
+                                DriverType::RY => {
+                                    if !status.movement_ry() {
+                                        self.right.move_next_y();
+                                        dum.remove(i.try_into().unwrap());
+                                        i = i - 1;
+                                    }
+                                }
+                                DriverType::RZ => {
+                                    if !status.movement_rz() {
+                                        self.right.move_next_z();
+                                        dum.remove(i.try_into().unwrap());
+                                        i = i - 1;
+                                    }
+                                }
+                                DriverType::RTHETA => {
+                                    if !status.movement_rt() {
+                                        self.right.move_next_theta();
+                                        dum.remove(i.try_into().unwrap());
+                                        i = i - 1;
+                                    }
+                                }
+                                DriverType::E => {
+                                    if let Some(next) = self.left.next() {
+                                        if self.left.position() == next {
+                                            self.left.move_next();
+                                        }
+                                    }
                                     dum.remove(i.try_into().unwrap());
                                     i = i - 1;
                                 }
-                            }
-                            DriverType::RY => {
-                                if !status.movement_ry() {
-                                    self.right.move_next_y();
+                                DriverType::R => {
+                                    if let Some(next) = self.right.next() {
+                                        if self.right.position() == next {
+                                            self.right.move_next();
+                                        }
+                                    }
                                     dum.remove(i.try_into().unwrap());
                                     i = i - 1;
                                 }
+                                _ => {}
                             }
-                            DriverType::RZ => {
-                                if !status.movement_rz() {
-                                    self.right.move_next_z();
-                                    dum.remove(i.try_into().unwrap());
-                                    i = i - 1;
-                                }
-                            }
-                            DriverType::RTHETA => {
-                                if !status.movement_rt() {
-                                    self.right.move_next_theta();
-                                    dum.remove(i.try_into().unwrap());
-                                    i = i - 1;
-                                }
-                            }
-                            DriverType::E => {
-                                if !(dum.contains(&DriverType::EX) || dum.contains(&DriverType::EY) || dum.contains(&DriverType::EX) || dum.contains(&DriverType::ETHETA)) {
-                                    self.left.move_next();
-                                }
-                                dum.remove(i.try_into().unwrap());
-                                i = i - 1;
-                            }
-                            DriverType::R => {
-                                if !(dum.contains(&DriverType::RX) || dum.contains(&DriverType::RY) || dum.contains(&DriverType::RX) || dum.contains(&DriverType::RTHETA)) {
-                                    self.right.move_next();
-                                }
-                                dum.remove(i.try_into().unwrap());
-                                i = i - 1;
-                            }
-                            _ => {}
                         }
+                        None => {}
                     }
-                    None => {}
                 }
+                i = i + 1;
             }
-            i = i + 1;
         }
 
         ctx.request_repaint();
