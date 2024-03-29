@@ -12,6 +12,7 @@ use eframe::egui;
 use egui::{Color32, Ui};
 use egui_extras::install_image_loaders;
 use egui_modal::Modal;
+use futures::SinkExt;
 use log::{error, info, Level};
 use rfd;
 use serde::{Deserialize, Serialize};
@@ -577,48 +578,62 @@ impl TemplateApp {
             });
         });
         ui.separator();
-        if ui.button("Tout suprimmer").clicked() {
-            if is_emitter {
-                self.left.del_list();
-            } else {
-                self.right.del_list();
-            }
-        }
-
-        ui.add_space(10.0);
 
         let next = match is_emitter {
             true => self.left.list_next(),
             false => self.right.list_next(),
         };
 
-
-        egui::ScrollArea::vertical()
-            .id_source(is_emitter)
-            .max_height(if is_emitter { ui.available_height() / 2.0 - 50.0 } else { ui.available_height() })
-            .auto_shrink([false, false])
-            .show(ui, |ui| {
-                for (i, pos) in next.iter().enumerate() {
-                    let a = ui.label(format!("{}\t\t{}", i + 1, pos));
-                    if a.hovered() {
-                        a.clone().highlight();
-                    }
-                    a.context_menu(|ui| {
-                        if ui.button("Supprimer").clicked() {
-                            match is_emitter {
-                                true => self.left.del_in_list(i),
-                                false => self.right.del_in_list(i),
-                            }
-                        }
-                        if ui.button("Modifier").clicked() {
-                            match is_emitter {
-                                true => self.left.replace_in_list(i, self.next_e),
-                                false => self.right.replace_in_list(i, self.next_r),
-                            }
-                        }
-                    });
+        let change = match STATUS.lock().unwrap().borrow().deref() {
+            Some(i) => {
+                if is_emitter {
+                    !(i.movement_ex() || i.movement_ey() || i.movement_ez() || i.movement_et())
+                } else {
+                    !(i.movement_rx() || i.movement_ry() || i.movement_rz() || i.movement_rt())
                 }
-            });
+            }
+            None => {
+                true
+            }
+        };
+        ui.add_enabled_ui(change, |ui| {
+
+            if ui.button("Tout suprimmer").clicked() {
+                if is_emitter {
+                    self.left.del_list();
+                } else {
+                    self.right.del_list();
+                }
+            }
+
+            ui.add_space(10.0);
+            egui::ScrollArea::vertical()
+                .id_source(is_emitter)
+                .max_height(if is_emitter { ui.available_height() / 2.0 - 50.0 } else { ui.available_height() })
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    for (i, pos) in next.iter().enumerate() {
+                        let a = ui.label(format!("{}\t\t{}", i + 1, pos));
+                        if a.hovered() {
+                            a.clone().highlight();
+                        }
+                        a.context_menu(|ui| {
+                            if ui.button("Supprimer").clicked() {
+                                match is_emitter {
+                                    true => self.left.del_in_list(i),
+                                    false => self.right.del_in_list(i),
+                                }
+                            }
+                            if ui.button("Modifier").clicked() {
+                                match is_emitter {
+                                    true => self.left.replace_in_list(i, self.next_e),
+                                    false => self.right.replace_in_list(i, self.next_r),
+                                }
+                            }
+                        });
+                    }
+                });
+        });
     }
 
     /// Defines the look of the main visual part of the UI
@@ -1192,6 +1207,14 @@ impl eframe::App for TemplateApp {
                 if ui.button("Go").clicked() {
                     self.move_next(DriverType::ALL);
                 }
+                if ui.button("Arr Mom").clicked() {
+                    self.send(Command::ArrMom);
+                }
+                if ui.button("Origine Rapide").clicked() {
+                    self.left.origin();
+                    self.right.origin();
+                    self.move_next(DriverType::ALL);
+                }
                 ui.menu_button("Fichier", |ui| {
                     if ui.button("Sauvegarder").clicked() {
                         let task = rfd::AsyncFileDialog::new()
@@ -1235,7 +1258,6 @@ impl eframe::App for TemplateApp {
         });
 
         if *STATUS_RECEIVE.lock().unwrap().borrow().deref() {
-
             let du = DRIVER_USED.lock().unwrap();
 
             let mut dum = du.borrow_mut();

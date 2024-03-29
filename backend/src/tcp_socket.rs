@@ -47,7 +47,7 @@ pub static STREAM_LOG_TCP: Mutex<RefCell<Option<File>>> = Mutex::new(RefCell::ne
 /// Constante du temps de veille du thread d'update
 static SLEEP_TIME_UPDATE: Duration = Duration::new(0, 500_000_000);
 /// Constante du temps de veille du thread de status
-static SLEEP_TIME_STATUS: Duration = Duration::new(0, 500_000_000);
+static SLEEP_TIME_STATUS: Duration = Duration::new(0, 500_000);
 
 /// Boucle attandant la reception sur la connexion tcp d'une [`common::definitions::Command`] au format JSON.
 /// La command est ensuite executé par [`ArmBackend::update`]
