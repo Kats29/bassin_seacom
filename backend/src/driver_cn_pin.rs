@@ -1,17 +1,19 @@
 use std::{
     thread::sleep,
-    time::Duration
+    time::Duration,
 };
-use sysfs_gpio as gpio;
+
 use gpio::{
     Direction, Pin,
 };
+use sysfs_gpio as gpio;
+
 use common::{
     definitions::DriverType,
     error::HardwareError,
 };
 
-use crate::error_handler::{pin_write, pin_read, pin_export, pin_direction, pin_set_active_low};
+use crate::error_handler::{pin_direction, pin_export, pin_read, pin_set_active_low, pin_write};
 
 pub struct DriverCnPin {
     pin_go: Pin,
@@ -34,7 +36,7 @@ impl Default for DriverCnPin {
 }
 
 impl DriverCnPin {
-    pub fn new(driver_type: DriverType) -> Result<Self,HardwareError> {
+    pub fn new(driver_type: DriverType) -> Result<Self, HardwareError> {
         let mut driver = Self::default();
         driver.driver_type = driver_type;
         let pin_go: u8;
@@ -111,20 +113,20 @@ impl DriverCnPin {
         return Ok(driver);
     }
 
-    fn set_direction(&mut self) -> Result<(),HardwareError> {
-        pin_set_active_low(self.pin_go,true)?;
-        pin_set_active_low(self.pin_reset,true)?;
-        pin_set_active_low(self.pin_zero,true)?;
-        pin_set_active_low(self.pin_fin_mvt,true)?;
-        pin_direction(self.pin_go,Direction::High)?;
-        pin_direction(self.pin_reset,Direction::High)?;
-        pin_direction(self.pin_zero,Direction::High)?;
-        pin_direction(self.pin_fin_mvt,Direction::In)?;
+    fn set_direction(&mut self) -> Result<(), HardwareError> {
+        pin_set_active_low(self.pin_go, true)?;
+        pin_set_active_low(self.pin_reset, true)?;
+        pin_set_active_low(self.pin_zero, true)?;
+        pin_set_active_low(self.pin_fin_mvt, true)?;
+        pin_direction(self.pin_go, Direction::High)?;
+        pin_direction(self.pin_reset, Direction::High)?;
+        pin_direction(self.pin_zero, Direction::High)?;
+        pin_direction(self.pin_fin_mvt, Direction::In)?;
 
         return Ok(());
     }
 
-    fn set_export(&self) -> Result<(),HardwareError> {
+    fn set_export(&self) -> Result<(), HardwareError> {
         pin_export(self.pin_go)?;
         pin_export(self.pin_reset)?;
         pin_export(self.pin_zero)?;
@@ -134,37 +136,36 @@ impl DriverCnPin {
     }
 
 
-    fn get_driver_type(& self) -> DriverType {
+    fn get_driver_type(&self) -> DriverType {
         return self.driver_type;
     }
 
-    pub fn go(&self) -> Result<(),HardwareError> {
-        self.movement_finished()?;
-        pin_write(self.pin_go,1)?;
+    pub fn go(&self) -> Result<(), HardwareError> {
+        if pin_read(self.pin_fin_mvt)? != 0 {
+            pin_write(self.pin_go, 1)?;
+            sleep(Duration::from_millis(100));
+            pin_write(self.pin_go, 0)?;
+            return Ok(());
+        }
+        Err(HardwareError::MovmentNotFinished(self.driver_type))
+        //while pin_read(self.pin_fin_mvt)? == 1{}
+    }
+
+    pub fn reset(&self) -> Result<(), HardwareError> {
+        pin_write(self.pin_reset, 1)?;
+        sleep(Duration::from_millis(1));
+        pin_write(self.pin_reset, 0)?;
+        Ok(())
+    }
+
+    pub fn zero(&self) -> Result<(), HardwareError> {
+        pin_write(self.pin_zero, 1)?;
         sleep(Duration::from_millis(10));
-
-        while pin_read(self.pin_fin_mvt)? == 1{}
-
-        pin_write(self.pin_go,0)?;
+        pin_write(self.pin_zero, 0)?;
         Ok(())
     }
 
-    pub fn reset(&self) -> Result<(),HardwareError>{
-        pin_write(self.pin_reset,1)?;
-        sleep(Duration::from_millis(500));
-        pin_write(self.pin_reset,0)?;
-        Ok(())
-    }
-
-    pub fn zero(&self) -> Result<(),HardwareError>{
-
-        pin_write(self.pin_zero,1)?;
-        sleep(Duration::from_millis(500));
-        pin_write(self.pin_zero,0)?;
-        Ok(())
-    }
-
-    pub fn movement_finished(&self) -> Result<(),HardwareError> {
+    pub fn movement_finished(&self) -> Result<(), HardwareError> {
         let go = pin_read(self.pin_go)?;
 
         let fin_mvt = pin_read(self.pin_fin_mvt)?;
@@ -174,10 +175,9 @@ impl DriverCnPin {
         }
         Ok(())
     }
-
 }
 
-impl Clone for DriverCnPin{
+impl Clone for DriverCnPin {
     fn clone(&self) -> Self {
         let mut driver = Self::default();
         driver.driver_type = self.driver_type;

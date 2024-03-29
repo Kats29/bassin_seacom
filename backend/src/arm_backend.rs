@@ -20,7 +20,6 @@ use crate::driver_cn_pin::DriverCnPin;
 use crate::drivers_cn_rs232::DriversCnRs232;
 use crate::error_handler::{pin_direction, pin_export, pin_read, pin_set_active_low, pin_write};
 
-
 /// Liste des erreurs de l'update courante
 pub static ERR_LIST: Mutex<RefCell<Vec<Result<(), HardwareError>>>> = Mutex::new(RefCell::new(vec![]));
 
@@ -150,7 +149,6 @@ impl ArmsBackend {
         pin_direction(self.pin_porte_gauche_haut, Direction::In)?;
         pin_direction(self.pin_porte_droite_bas, Direction::In)?;
         pin_direction(self.pin_porte_droite_haut, Direction::In)
-
     }
     /// Fonction permettant le renvoie d'un [`Status`] codant l'état actuelle du bassin
     pub fn check_status(&self) -> Status {
@@ -160,7 +158,7 @@ impl ArmsBackend {
         let status = Status::new(
             match pin_read(self.pin_porte_droite_bas) {
                 Ok(result) => {
-                    if result == 0 {
+                    if result == 1 {
                         vec_error.push(Err(HardwareError::OpenDoor(Doors::DroiteBas)));
                         true
                     } else {
@@ -173,7 +171,7 @@ impl ArmsBackend {
                 }
             } || match pin_read(self.pin_porte_droite_haut) {
                 Ok(result) => {
-                    if result == 0 {
+                    if result == 1 {
                         vec_error.push(Err(HardwareError::OpenDoor(Doors::DroiteHaut)));
                         true
                     } else {
@@ -187,7 +185,7 @@ impl ArmsBackend {
             },
             match pin_read(self.pin_porte_gauche_bas) {
                 Ok(result) => {
-                    if result == 0 {
+                    if result == 1 {
                         vec_error.push(Err(HardwareError::OpenDoor(Doors::GaucheBas)));
                         true
                     } else {
@@ -201,7 +199,7 @@ impl ArmsBackend {
             } ||
                 match pin_read(self.pin_porte_gauche_haut) {
                     Ok(result) => {
-                        if result == 0 {
+                        if result == 1 {
                             vec_error.push(Err(HardwareError::OpenDoor(Doors::GaucheBas)));
                             true
                         } else {
@@ -256,10 +254,10 @@ impl ArmsBackend {
                     vec_error.push(Err(e));
                     false
                 }
-            } ||
+            } &&
                 match pin_read(self.pin_info_ar_urg) {
                     Ok(result) => {
-                        if result == 0 {
+                        if result == 1 {
                             vec_error.push(Err(HardwareError::ArrUrg));
                             true
                         } else {
@@ -367,15 +365,16 @@ impl ArmsBackend {
 
     /// Fonction modifant le bassin en fonction de la [`Command`] choisis
     pub fn update(&mut self, command: Command) -> Result<(), HardwareError> {
+        *ERR_LIST.lock().unwrap().borrow_mut() = vec![];
         match command {
             Command::Go(dt, next_e, next_r) => {
                 self.check_status();
                 self.write_go(dt, next_e, next_r)?;
-                block_on(self.pin_go(dt))
+                self.pin_go(dt)
             }
             Command::Reset(dt) => {
                 block_on(self.reset(dt))
-            },
+            }
             Command::Zero(dt) => {
                 self.check_status();
                 self.zero(dt)
@@ -434,8 +433,7 @@ impl ArmsBackend {
     /// La fonction utilise de la récursivité pour écrit les positions pour ces types de driver :
     /// [`DriverType::E`], [`DriverType::R`] et [`DriverType::ALL`]
     /// Lors de l'utilisation de la récussivité, les différentes fonctions à
-    #[async_recursion]
-    pub async fn pin_go(&self, driver_type: DriverType) -> Result<(), HardwareError> {
+    pub fn pin_go(&self, driver_type: DriverType) -> Result<(), HardwareError> {
         match driver_type {
             DriverType::EX => self.driver_x_emetteur.go(),
             DriverType::EY => self.driver_y_emetteur.go(),
@@ -446,67 +444,21 @@ impl ArmsBackend {
             DriverType::RZ => self.driver_z_recepteur.go(),
             DriverType::RTHETA => self.driver_t_recepteur.go(),
             DriverType::R => {
-                let x = self.pin_go(DriverType::RX);
-                let y = self.pin_go(DriverType::RY);
-                let z = self.pin_go(DriverType::RZ);
-                let t = self.pin_go(DriverType::RTHETA);
-                let a = futures::join!(x,y,z,t);
-                let vec = vec![a.0, a.1, a.2, a.3];
-
-                for n in vec {
-                    match n {
-                        Ok(_) => {}
-                        Err(a) => {
-                            ERR_LIST.lock().unwrap().borrow_mut().push(Err(a));
-                        }
-                    }
-                }
-
-                if ERR_LIST.lock().unwrap().borrow().is_empty() {
-                    return Ok(());
-                }
-                Err(HardwareError::UnknownError("".to_string()))
+                self.pin_go(DriverType::RX)?;
+                self.pin_go(DriverType::RY)?;
+                self.pin_go(DriverType::RZ)?;
+                self.pin_go(DriverType::RTHETA)
             }
             DriverType::E => {
-                let x = self.pin_go(DriverType::EX);
-                let y = self.pin_go(DriverType::EY);
-                let z = self.pin_go(DriverType::EZ);
-                let t = self.pin_go(DriverType::ETHETA);
-                let a = futures::join!(x,y,z,t);
-                let vec = vec![a.0, a.1, a.2, a.3];
+                self.pin_go(DriverType::EX)?;
+                self.pin_go(DriverType::EY)?;
+                self.pin_go(DriverType::EZ)?;
+                self.pin_go(DriverType::ETHETA)
 
-                for n in vec {
-                    match n {
-                        Ok(_) => {}
-                        Err(a) => {
-                            ERR_LIST.lock().unwrap().borrow_mut().push(Err(a));
-                        }
-                    }
-                }
-
-                if ERR_LIST.lock().unwrap().borrow().is_empty() {
-                    return Ok(());
-                }
-                Err(HardwareError::UnknownError("".to_string()))
             }
             DriverType::ALL => {
-                let r = self.pin_go(DriverType::R);
-                let e = self.pin_go(DriverType::E);
-                let a = futures::join!(r,e);
-                let vec = vec![a.0, a.1];
-
-                for n in vec {
-                    match n {
-                        Ok(_) => {}
-                        Err(a) => {
-                            ERR_LIST.lock().unwrap().borrow_mut().push(Err(a));
-                        }
-                    }
-                }
-                if ERR_LIST.lock().unwrap().borrow().is_empty() {
-                    return Ok(());
-                }
-                Err(HardwareError::UnknownError("".to_string()))
+                self.pin_go(DriverType::R)?;
+                self.pin_go(DriverType::E)
             }
         }
     }
@@ -598,16 +550,40 @@ impl ArmsBackend {
         }
     }
 
-    pub fn zero(&self, driver_type: DriverType) -> Result<(), HardwareError> {
+    pub fn zero(&mut self, driver_type: DriverType) -> Result<(), HardwareError> {
         match driver_type {
-            DriverType::EX => self.driver_x_emetteur.zero(),
-            DriverType::EY => self.driver_y_emetteur.zero(),
-            DriverType::EZ => self.driver_z_emetteur.zero(),
-            DriverType::ETHETA => self.driver_t_emetteur.zero(),
-            DriverType::RX => self.driver_x_recepteur.zero(),
-            DriverType::RY => self.driver_y_recepteur.zero(),
-            DriverType::RZ => self.driver_z_recepteur.zero(),
-            DriverType::RTHETA => self.driver_t_recepteur.zero(),
+            DriverType::EX => {
+                self.driver_x_emetteur.zero()
+                // self.driver_rs232.read_i2c_origin(driver_type)
+            }
+            DriverType::EY => {
+                self.driver_y_emetteur.zero()
+                // self.driver_rs232.read_i2c_origin(driver_type)
+            }
+            DriverType::EZ => {
+                self.driver_z_emetteur.zero()
+                // self.driver_rs232.read_i2c_origin(driver_type)
+            }
+            DriverType::ETHETA => {
+                self.driver_t_emetteur.zero()
+                // self.driver_rs232.read_i2c_origin(driver_type)
+            }
+            DriverType::RX => {
+                self.driver_x_recepteur.zero()
+                // self.driver_rs232.read_i2c_origin(driver_type)
+            }
+            DriverType::RY => {
+                self.driver_y_recepteur.zero()
+                // self.driver_rs232.read_i2c_origin(driver_type)
+            }
+            DriverType::RZ => {
+                self.driver_z_recepteur.zero()
+                // self.driver_rs232.read_i2c_origin(driver_type)
+            }
+            DriverType::RTHETA => {
+                self.driver_t_recepteur.zero()
+                // self.driver_rs232.read_i2c_origin(driver_type)
+            }
             DriverType::R => {
                 self.zero(DriverType::RX)?;
                 self.zero(DriverType::RY)?;

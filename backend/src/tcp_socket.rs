@@ -197,11 +197,11 @@ fn handle_client() -> std::io::Result<()> {
 /// Après une connexion la fonction [`handle_client`] est appelée.
 pub fn tcp_listen() -> std::io::Result<()> {
     STREAM_LOG_ERRORS.lock().unwrap().replace(
-        Some(OpenOptions::new().append(true).create(true).open("./log/error.log").expect("Erreur ouverture fichier ./log/error.log"))
+        Some(OpenOptions::new()/*.write(true)*/.append(true).create(true).open("./log/error.log").expect("Erreur ouverture fichier ./log/error.log"))
     );
 
     STREAM_LOG_TCP.lock().unwrap().replace(
-        match OpenOptions::new().append(true).create(true).open("./log/tcp.log") {
+        match OpenOptions::new()/*.write(true)*/.append(true).create(true).open("./log/tcp.log") {
             Ok(f) => Some(f),
             Err(e) => {
                 write_error_log("Could not open ./log/tcp.log".to_string());
@@ -212,7 +212,7 @@ pub fn tcp_listen() -> std::io::Result<()> {
 
 
     STREAM_LOG_IO.lock().unwrap().replace(
-        match OpenOptions::new().append(true).create(true).open("./log/io.log") {
+        match OpenOptions::new()/*.write(true)*/.append(true).create(true).open("./log/io.log") {
             Ok(f) => Some(f),
             Err(e) => {
                 write_error_log("Could not open ./log/io.log".to_string());
