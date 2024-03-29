@@ -64,7 +64,7 @@ impl Default for TemplateApp {
     fn default() -> Self {
         let left_arm = Arm::new(true);
         let right_arm = Arm::new(false);
-        let client = Self::connect("wss://bassin.local:3333");
+        let client = Self::connect("ws://bassin.local:3333");
         /*STATUS.lock().unwrap().replace(Some(Status::new(
             false,
             false,

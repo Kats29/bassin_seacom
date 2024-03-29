@@ -148,7 +148,10 @@ impl DriversCnRs232{
         }?;
         i2c_set_slave(i2c_handler, i2c_addr as u16,type_cn)?;
         for n in data.into_iter(){
+            i2c_write(i2c_handler,0x09,0x02,type_cn)?; // Desactive le
+                                                                                   // transmetteur
             i2c_write(i2c_handler,0x00,n,type_cn)?;
+            i2c_write(i2c_handler,0x09,0x00,type_cn)?; // Reactive le transmetteur
 
             while pin_read(iqr_pin)? == 1 {}
 
