@@ -10,34 +10,26 @@ Premièrement, afin d'avoir accès à tous les ports GPIO de la carte, celle-ci 
 
 Puisque les dernières versions ont un serveur nginx préinstallé, c'est ce que ce projet va utiliser.
 
+Afin de vous connecter au Beaglebone, connecter le câble ethernet à votre pc et configurer votre carte réseau pour avoir une IPv4 telle que 192.168.7.4, via la commande `sudo ifconfig enp3s0 192.168.7.4` (en remplaçant enp3s0 par le nom de votre interface réseau).
+
 Une fois la carte SD insérée dans la Beaglebone et celle-ci branchée sur le même réseau que votre ordinateur, vous pourrez ouvrir une console `ssh` grâce à la commande suivante :
 
 ```sh
-ssh debian@beaglebone.local
+ssh debian@192.168.7.3
 ```
 
-Le mot de passe par défaut est `temppwd`, pensez à le changer dès que possible.
-
-Il faut maintenant changer le nom de domaine local pour qu'il soit `bassin.local`. Pour cela, éxecutez les commandes :
-
-```sh
-sudo echo bassin > /etc/hostname
-sudo service avahi-daemon restart
-```
-
-À présent, pour vous connecter en `ssh`, il faudra taper :
-
-```sh
-ssh debian@bassin.local
-```
+Le mot de passe par défaut est `temppwd`.
 
 Afin de configurer nginx, ouvrez le fichier `/etc/nginx/sites-enabled/default` et remplacez la ligne `root /var/www` par `root /home/debian/dist`. Enregistrez le fichier.
 
 Finalement, il faut ouvrir le port 3333 de la Beaglebone pour permettre la connection TCP entre l'interface et le backend :
 
 ```sh
-sudo iptables -A INPUT -p tcp --dport 3333 --jump ACCEPT
-sudo iptables-save
+sudo nft add table ip filter
+sudo nft add chain ip filter INPUT { type filter hook input priority 0 \; }
+sudo nft add rule ip filter INPUT tcp dport 3333 accept
+sudo nft list ruleset # pour vérifier que les règles ont bien été appliquées
+sudo nft list ruleset | sudo tee -a /etc/nftables.conf # pour les sauvegarder
 ```
 
 Vous pouvez maintenant quitter la console `ssh` avec la commande :
@@ -61,7 +53,7 @@ Tapez le mot de passe de la Beaglebone lorsqu'il vous est demandé.
 Vous pouvez à présent rouvrir une console `ssh` pour démarrer le backend :
 
 ```sh
-ssh debian@bassin.local
+ssh debian@192.168.7.3
 ```
 
 Tapez le mot de passe.
@@ -74,7 +66,7 @@ Tapez à nouveau le mot de passe.
 
 ### Accès à l'interface
 
-Vous pouvez à présent vous connecter à l'interface depuis votre navigateur internet, en tapant `bassin.local` dans la barre d'adresse.
+Vous pouvez à présent vous connecter à l'interface depuis votre navigateur internet, en tapant `192.168.7.3:9090` dans la barre d'adresse.
 
 ## Branchement
 
