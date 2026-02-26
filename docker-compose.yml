@@ -1,0 +1,10 @@
+services:
+  arm-builder:
+    build: .
+    container_name: rust-arm-builder
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    environment:
+      - CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
+    command: make
