@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
 use std::fmt::{Display, Formatter};
 
-
 ///
 /// Liste des portes du bassin
 #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
@@ -25,9 +24,8 @@ impl Display for Doors {
     }
 }
 
-
 /// Liste des drivers du bassin (R correspond aux récepteurs, E aux émetteurs et ALL a tout les drivers)
-#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug, strum::EnumIter,PartialEq)]
+#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug, strum::EnumIter, PartialEq)]
 pub enum DriverType {
     EX,
     EY,
@@ -55,12 +53,11 @@ impl Display for DriverType {
             DriverType::RTHETA => "Driver du moteur Théta récepteur",
             DriverType::E => "Drivers des moteur émetteur",
             DriverType::R => "Drivers des moteur récepteur",
-            DriverType::ALL => "Drivers de tout les moteurs"
+            DriverType::ALL => "Drivers de tout les moteurs",
         };
         write!(f, "{}", s)
     }
 }
-
 
 ///Liste des Commandes possible
 #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
@@ -75,7 +72,6 @@ pub enum Command {
     Start,
     Stop,
 }
-
 
 ///Structure sauvegardant la possition de 4 axes, x, y, z et θ
 #[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug, PartialEq)]
@@ -103,12 +99,10 @@ impl Position {
         Self { x, y, z, theta }
     }
 
-
     ///Modifie la position par la position pos
-    pub fn set_pos(&mut self,pos: Self){
+    pub fn set_pos(&mut self, pos: Self) {
         *self = pos;
     }
-
 
     /// Getter pour x
     pub fn x(self) -> f32 {
@@ -141,15 +135,23 @@ impl Position {
     pub fn set_theta(&mut self, value: f32) {
         self.theta = value;
     }
-
 }
 
 impl Display for Position {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f,"{}",format!("X : {:.2}, Y : {:.2} Z : {:.2}, θ : {:.2}",self.x(),self.y(),self.z(),self.theta()))
+        write!(
+            f,
+            "{}",
+            format!(
+                "X : {:.2}, Y : {:.2} Z : {:.2}, θ : {:.2}",
+                self.x(),
+                self.y(),
+                self.z(),
+                self.theta()
+            )
+        )
     }
 }
-
 
 #[derive(serde::Deserialize, serde::Serialize, Clone, Debug)]
 #[serde(default)]
@@ -157,7 +159,6 @@ pub struct Arm {
     position: Position,
     list_next: VecDeque<Position>,
     is_emitter: bool,
-
 }
 
 impl Default for Arm {
@@ -171,15 +172,10 @@ impl Default for Arm {
 }
 impl Arm {
     pub fn new(is_emitter: bool) -> Self {
-        Self{
-            position: Position::new(
-                if is_emitter { -1417.0 } else { 1417.0 },
-                495.0,
-                0.0,
-                0.0,
-            ),
-            list_next : VecDeque::new(),
-            is_emitter
+        Self {
+            position: Position::new(if is_emitter { -1417.0 } else { 1417.0 }, 495.0, 0.0, 0.0),
+            list_next: VecDeque::new(),
+            is_emitter,
         }
     }
     pub fn origin(&mut self) {
@@ -197,13 +193,11 @@ impl Arm {
         self.list_next.push_front(new_pos);
     }
 
-
     pub fn origin_y(&mut self) {
         let mut new_pos = self.position();
         new_pos.set_y(495.0);
         self.list_next.push_front(new_pos);
     }
-
 
     pub fn origin_z(&mut self) {
         let mut new_pos = self.position();
@@ -227,29 +221,28 @@ impl Arm {
         !self.list_next.is_empty()
     }
 
-    pub fn del_list(&mut self){
+    pub fn del_list(&mut self) {
         self.list_next = VecDeque::new();
     }
 
-    pub fn del_in_list(&mut self,index: usize){
+    pub fn del_in_list(&mut self, index: usize) {
         self.list_next.remove(index);
         return;
     }
 
-    pub fn replace_in_list(&mut self,index:usize,pos: Position){
+    pub fn replace_in_list(&mut self, index: usize, pos: Position) {
         self.list_next.get_mut(index).unwrap().set_pos(pos);
     }
 
     pub fn next(&self) -> Option<Position> {
         if self.has_next() {
             Some(self.list_next[0])
-        }
-        else {
+        } else {
             None
         }
     }
 
-    pub fn list_next(&self) -> VecDeque<Position>{
+    pub fn list_next(&self) -> VecDeque<Position> {
         return self.list_next.clone();
     }
 
@@ -259,7 +252,7 @@ impl Arm {
 
     /// Moves the arm from its current position to the next one
     pub fn move_next(&mut self) {
-        if self.has_next(){
+        if self.has_next() {
             let pos = self.list_next.pop_front().unwrap();
             self.set_position(pos);
         }
@@ -333,11 +326,22 @@ impl Default for Status {
     }
 }
 
-
 impl Status {
-    pub fn new(door_right_open: bool, door_left_open: bool, bassin_powered: bool, bassin_started: bool, arr_urg: bool,
-               arr_mom: bool, movement_ex: bool, movement_ey: bool, movement_ez: bool, movement_et: bool,
-               movement_rx: bool, movement_ry: bool, movement_rz: bool, movement_rt: bool,
+    pub fn new(
+        door_right_open: bool,
+        door_left_open: bool,
+        bassin_powered: bool,
+        bassin_started: bool,
+        arr_urg: bool,
+        arr_mom: bool,
+        movement_ex: bool,
+        movement_ey: bool,
+        movement_ez: bool,
+        movement_et: bool,
+        movement_rx: bool,
+        movement_ry: bool,
+        movement_rz: bool,
+        movement_rt: bool,
     ) -> Self {
         Self {
             door_right_open,
@@ -378,7 +382,6 @@ impl Status {
             return true;
         }
 
-
         if self.movement_ex() != equal.movement_ex() {
             return true;
         }
@@ -391,7 +394,6 @@ impl Status {
         if self.movement_et() != equal.movement_et() {
             return true;
         }
-
 
         if self.movement_rx() != equal.movement_rx() {
             return true;
