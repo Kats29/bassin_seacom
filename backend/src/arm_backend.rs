@@ -5,24 +5,19 @@ use async_recursion::async_recursion;
 use futures::executor::block_on;
 use sysfs_gpio::{Direction, Pin};
 
+use common::definitions::Position;
 use common::{
-    definitions::{
-        Command,
-        Doors,
-        DriverType,
-        Status,
-    },
+    definitions::{Command, Doors, DriverType, Status},
     error::HardwareError,
 };
-use common::definitions::Position;
 
 use crate::driver_cn_pin::DriverCnPin;
 use crate::drivers_cn_rs232::DriversCnRs232;
 use crate::error_handler::{pin_direction, pin_export, pin_read, pin_set_active_low, pin_write};
 
 /// Liste des erreurs de l'update courante
-pub static ERR_LIST: Mutex<RefCell<Vec<Result<(), HardwareError>>>> = Mutex::new(RefCell::new(vec![]));
-
+pub static ERR_LIST: Mutex<RefCell<Vec<Result<(), HardwareError>>>> =
+    Mutex::new(RefCell::new(vec![]));
 
 /// Structure regroupant tout les drivers et les [`sysfs_gpio::Pin`] nécessaire pour faire fonctionné le bassin
 pub struct ArmsBackend {
@@ -196,22 +191,20 @@ impl ArmsBackend {
                     vec_error.push(Err(e));
                     true
                 }
-            } ||
-                match pin_read(self.pin_porte_gauche_haut) {
-                    Ok(result) => {
-                        if result == 1 {
-                            vec_error.push(Err(HardwareError::OpenDoor(Doors::GaucheBas)));
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                    Err(e) => {
-                        vec_error.push(Err(e));
+            } || match pin_read(self.pin_porte_gauche_haut) {
+                Ok(result) => {
+                    if result == 1 {
+                        vec_error.push(Err(HardwareError::OpenDoor(Doors::GaucheBas)));
                         true
+                    } else {
+                        false
                     }
                 }
-            ,
+                Err(e) => {
+                    vec_error.push(Err(e));
+                    true
+                }
+            },
             match pin_read(self.pin_info_etat) {
                 Ok(result) => {
                     if result == 0 {
@@ -239,8 +232,7 @@ impl ArmsBackend {
                     vec_error.push(Err(e));
                     false
                 }
-            }
-            ,
+            },
             match pin_read(self.pin_ordre_ar_urg) {
                 Ok(result) => {
                     if result == 0 {
@@ -254,22 +246,20 @@ impl ArmsBackend {
                     vec_error.push(Err(e));
                     false
                 }
-            } &&
-                match pin_read(self.pin_info_ar_urg) {
-                    Ok(result) => {
-                        if result == 1 {
-                            vec_error.push(Err(HardwareError::ArrUrg));
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                    Err(e) => {
-                        vec_error.push(Err(e));
+            } && match pin_read(self.pin_info_ar_urg) {
+                Ok(result) => {
+                    if result == 1 {
+                        vec_error.push(Err(HardwareError::ArrUrg));
+                        true
+                    } else {
                         false
                     }
                 }
-            ,
+                Err(e) => {
+                    vec_error.push(Err(e));
+                    false
+                }
+            },
             match pin_read(self.pin_ar_mom) {
                 Ok(result) => {
                     if result == 0 {
@@ -285,72 +275,56 @@ impl ArmsBackend {
                 }
             },
             match self.driver_x_emetteur.movement_finished() {
-                Ok(_) => {
-                    false
-                }
+                Ok(_) => false,
                 Err(e) => {
                     vec_error.push(Err(e));
                     true
                 }
             },
             match self.driver_y_emetteur.movement_finished() {
-                Ok(_) => {
-                    false
-                }
+                Ok(_) => false,
                 Err(e) => {
                     vec_error.push(Err(e));
                     true
                 }
             },
             match self.driver_z_emetteur.movement_finished() {
-                Ok(_) => {
-                    false
-                }
+                Ok(_) => false,
                 Err(e) => {
                     vec_error.push(Err(e));
                     true
                 }
             },
             match self.driver_t_emetteur.movement_finished() {
-                Ok(_) => {
-                    false
-                }
+                Ok(_) => false,
                 Err(e) => {
                     vec_error.push(Err(e));
                     true
                 }
             },
             match self.driver_x_recepteur.movement_finished() {
-                Ok(_) => {
-                    false
-                }
+                Ok(_) => false,
                 Err(e) => {
                     vec_error.push(Err(e));
                     true
                 }
             },
             match self.driver_y_recepteur.movement_finished() {
-                Ok(_) => {
-                    false
-                }
+                Ok(_) => false,
                 Err(e) => {
                     vec_error.push(Err(e));
                     true
                 }
             },
             match self.driver_z_recepteur.movement_finished() {
-                Ok(_) => {
-                    false
-                }
+                Ok(_) => false,
                 Err(e) => {
                     vec_error.push(Err(e));
                     true
                 }
             },
             match self.driver_t_recepteur.movement_finished() {
-                Ok(_) => {
-                    false
-                }
+                Ok(_) => false,
                 Err(e) => {
                     vec_error.push(Err(e));
                     true
@@ -358,10 +332,8 @@ impl ArmsBackend {
             },
         );
 
-
         return status;
     }
-
 
     /// Fonction modifant le bassin en fonction de la [`Command`] choisis
     pub fn update(&mut self, command: Command) -> Result<(), HardwareError> {
@@ -372,9 +344,7 @@ impl ArmsBackend {
                 self.write_go(dt, next_e, next_r)?;
                 self.pin_go(dt)
             }
-            Command::Reset(dt) => {
-                block_on(self.reset(dt))
-            }
+            Command::Reset(dt) => block_on(self.reset(dt)),
             Command::Zero(dt) => {
                 self.check_status();
                 self.zero(dt)
@@ -388,23 +358,43 @@ impl ArmsBackend {
         }
     }
 
-
     /// Fonction qui envoie au [`DriversCnRs232`] les positions a écrire en fonction du drivers a utiliser
     /// La fonction utilise [`DriversCnRs232::write_i2c`] pour écrire et transforme les positions grâce a
     /// [`DriversCnRs232::x_to_bytes`], [`DriversCnRs232::y_to_bytes`], [`DriversCnRs232::z_to_bytes`] ou
     /// [`DriversCnRs232::theta_to_bytes`] suivant le drivers voulut.
     /// La fonction utilise de la récursivité pour écrit les positions pour ces type de drivers :
     /// [`DriverType::E`], [`DriverType::R`] et [`DriverType::ALL`]
-    pub fn write_go(&mut self, driver_type: DriverType, pos_e: Position, pos_r: Position) -> Result<(), HardwareError> {
+    pub fn write_go(
+        &mut self,
+        driver_type: DriverType,
+        pos_e: Position,
+        pos_r: Position,
+    ) -> Result<(), HardwareError> {
         match driver_type {
-            DriverType::EX => self.driver_rs232.write_i2c(DriversCnRs232::x_to_bytes(pos_e.x()), driver_type),
-            DriverType::EY => self.driver_rs232.write_i2c(DriversCnRs232::y_to_bytes(pos_e.y()), driver_type),
-            DriverType::EZ => self.driver_rs232.write_i2c(DriversCnRs232::z_to_bytes(pos_e.z()), driver_type),
-            DriverType::ETHETA => self.driver_rs232.write_i2c(DriversCnRs232::theta_to_bytes(pos_e.theta()), driver_type),
-            DriverType::RX => self.driver_rs232.write_i2c(DriversCnRs232::x_to_bytes(pos_r.x()), driver_type),
-            DriverType::RY => self.driver_rs232.write_i2c(DriversCnRs232::y_to_bytes(pos_r.y()), driver_type),
-            DriverType::RZ => self.driver_rs232.write_i2c(DriversCnRs232::z_to_bytes(pos_r.z()), driver_type),
-            DriverType::RTHETA => self.driver_rs232.write_i2c(DriversCnRs232::theta_to_bytes(pos_r.theta()), driver_type),
+            DriverType::EX => self
+                .driver_rs232
+                .write_i2c(DriversCnRs232::x_to_bytes(pos_e.x()), driver_type),
+            DriverType::EY => self
+                .driver_rs232
+                .write_i2c(DriversCnRs232::y_to_bytes(pos_e.y()), driver_type),
+            DriverType::EZ => self
+                .driver_rs232
+                .write_i2c(DriversCnRs232::z_to_bytes(pos_e.z()), driver_type),
+            DriverType::ETHETA => self
+                .driver_rs232
+                .write_i2c(DriversCnRs232::theta_to_bytes(pos_e.theta()), driver_type),
+            DriverType::RX => self
+                .driver_rs232
+                .write_i2c(DriversCnRs232::x_to_bytes(pos_r.x()), driver_type),
+            DriverType::RY => self
+                .driver_rs232
+                .write_i2c(DriversCnRs232::y_to_bytes(pos_r.y()), driver_type),
+            DriverType::RZ => self
+                .driver_rs232
+                .write_i2c(DriversCnRs232::z_to_bytes(pos_r.z()), driver_type),
+            DriverType::RTHETA => self
+                .driver_rs232
+                .write_i2c(DriversCnRs232::theta_to_bytes(pos_r.theta()), driver_type),
             DriverType::R => {
                 self.write_go(DriverType::RX, Position::default(), pos_r)?;
                 self.write_go(DriverType::RY, Position::default(), pos_r)?;
@@ -420,8 +410,10 @@ impl ArmsBackend {
                 Ok(())
             }
             DriverType::ALL => {
-                self.clone().write_go(DriverType::E, pos_e, Position::default())?;
-                self.clone().write_go(DriverType::R, Position::default(), pos_r)?;
+                self.clone()
+                    .write_go(DriverType::E, pos_e, Position::default())?;
+                self.clone()
+                    .write_go(DriverType::R, Position::default(), pos_r)?;
                 Ok(())
             }
         }
@@ -454,7 +446,6 @@ impl ArmsBackend {
                 self.pin_go(DriverType::EY)?;
                 self.pin_go(DriverType::EZ)?;
                 self.pin_go(DriverType::ETHETA)
-
             }
             DriverType::ALL => {
                 self.pin_go(DriverType::R)?;
@@ -489,7 +480,7 @@ impl ArmsBackend {
                 let y = self.reset(DriverType::RY);
                 let z = self.reset(DriverType::RZ);
                 let t = self.reset(DriverType::RTHETA);
-                let a = futures::join!(x,y,z,t);
+                let a = futures::join!(x, y, z, t);
                 let vec = vec![a.0, a.1, a.2, a.3];
 
                 for n in vec {
@@ -511,7 +502,7 @@ impl ArmsBackend {
                 let y = self.reset(DriverType::EY);
                 let z = self.reset(DriverType::EZ);
                 let t = self.reset(DriverType::ETHETA);
-                let a = futures::join!(x,y,z,t);
+                let a = futures::join!(x, y, z, t);
                 let vec = vec![a.0, a.1, a.2, a.3];
 
                 for n in vec {
@@ -531,7 +522,7 @@ impl ArmsBackend {
             DriverType::ALL => {
                 let r = self.reset(DriverType::R);
                 let e = self.reset(DriverType::E);
-                let a = futures::join!(r,e);
+                let a = futures::join!(r, e);
                 let vec = vec![a.0, a.1];
 
                 for n in vec {

@@ -1,15 +1,15 @@
-use std::fs::File;
-use i2c_linux::I2c;
-use sysfs_gpio::{Direction, Pin};
+//use std::fs::File;
+//use i2c_linux::I2c;
+use common::{definitions::DriverType, error::HardwareError};
+use linux_embedded_hal::I2cdev;
 use strum::IntoEnumIterator;
 use sysfs_gpio::Direction::Low;
-use common::{
-    error::HardwareError,
-    definitions::DriverType,
+use sysfs_gpio::{Direction, Pin};
+
+use crate::error_handler::{
+    i2c_creation, i2c_read, i2c_set_slave, i2c_write, pin_direction, pin_export, pin_read,
+    pin_write,
 };
-
-use crate::error_handler::{i2c_creation, i2c_read, i2c_set_slave, i2c_write, pin_direction, pin_export, pin_read, pin_write};
-
 
 const ADDR_X_E: u8 = 0x6C;
 const ADDR_Y_E: u8 = 0x61;
@@ -23,14 +23,12 @@ const ADDR_T_R: u8 = 0x55;
 
 // #[derive(Copy, Clone)]
 pub struct DriversCnRs232 {
-    i2c_handler: Option<I2c<File>>,
+    i2c_handler: Option<I2cdev>,
 }
 
 impl Default for DriversCnRs232 {
     fn default() -> Self {
-        Self {
-            i2c_handler: None,
-        }
+        Self { i2c_handler: None }
     }
 }
 
@@ -62,7 +60,6 @@ impl DriversCnRs232 {
         }
     }
 
-
     pub fn new() -> Result<Self, HardwareError> {
         let mut driver = Self::default();
         driver.i2c_handler = Some(i2c_creation("/dev/i2c-2".to_string())?);
@@ -73,7 +70,6 @@ impl DriversCnRs232 {
         pin = Pin::new(111);
         pin_export(pin)?;
         pin_direction(pin, Direction::In)?;
-
 
         pin = Pin::new(112);
         pin_export(pin)?;
@@ -92,21 +88,14 @@ impl DriversCnRs232 {
         pin_export(pin)?;
         pin_direction(pin, Low)?;
         let i2c_handler = match self.i2c_handler.as_mut() {
-            None => {
-                Err(HardwareError::UnknownError("".to_string()))
-            }
-            Some(a) => {
-                Ok(a)
-            }
+            None => Err(HardwareError::UnknownError("".to_string())),
+            Some(a) => Ok(a),
         }?;
         pin_write(pin, 1)?;
         for dt in DriverType::iter() {
             i2c_set_slave(i2c_handler, Self::get_i2c_addr_value(dt) as u16, dt)?;
             match dt {
-                DriverType::EX |
-                DriverType::EY |
-                DriverType::RX |
-                DriverType::RY => {
+                DriverType::EX | DriverType::EY | DriverType::RX | DriverType::RY => {
                     i2c_write(i2c_handler, 0x1E, 0x1A, dt)?; // utilise la clock externe
                     i2c_write(i2c_handler, 0x1C, 26u8, dt)?; // utilise la clock externe
                     i2c_write(i2c_handler, 0x1B, 1u8, dt)?; // utilise la clock externe
@@ -116,10 +105,7 @@ impl DriversCnRs232 {
                     i2c_read(i2c_handler, 0x02, dt)?;
                 }
 
-                DriverType::EZ |
-                DriverType::ETHETA |
-                DriverType::RZ |
-                DriverType::RTHETA => {}
+                DriverType::EZ | DriverType::ETHETA | DriverType::RZ | DriverType::RTHETA => {}
                 _ => {}
             }
         }
@@ -127,18 +113,13 @@ impl DriversCnRs232 {
         Ok(())
     }
 
-
     /// Ecrit sur l'I2C a l'adresse corespodant au driver choisis. Retourne une [`HardwareError`] en cas de problème.
     pub fn write_i2c(&mut self, data: [u8; 9], type_cn: DriverType) -> Result<(), HardwareError> {
         let i2c_addr = Self::get_i2c_addr_value(type_cn);
         let iqr_pin = Self::get_iqr_pin(type_cn);
         let i2c_handler = match self.i2c_handler.as_mut() {
-            None => {
-                Err(HardwareError::UnknownError("".to_string()))
-            }
-            Some(a) => {
-                Ok(a)
-            }
+            None => Err(HardwareError::UnknownError("".to_string())),
+            Some(a) => Ok(a),
         }?;
         i2c_set_slave(i2c_handler, i2c_addr as u16, type_cn)?;
         i2c_read(i2c_handler, 0x12, type_cn)?;
@@ -147,7 +128,7 @@ impl DriversCnRs232 {
         i2c_read(i2c_handler, 0x02, type_cn)?;
         for n in data.into_iter() {
             i2c_write(i2c_handler, 0x09, 0x02, type_cn)?; // Desactive le
-            // transmetteur
+                                                          // transmetteur
             i2c_write(i2c_handler, 0x00, n, type_cn)?;
             i2c_write(i2c_handler, 0x09, 0x00, type_cn)?; // Reactive le transmetteur
 
@@ -164,25 +145,25 @@ impl DriversCnRs232 {
         Ok(())
     }
 
-    pub fn read_i2c_origin(&mut self, type_cn: DriverType) -> Result<(), HardwareError> {
-        let i2c_addr = Self::get_i2c_addr_value(type_cn);
-        let irq_pin = Self::get_iqr_pin(type_cn);
-        let i2c_handler = match self.i2c_handler.as_mut() {
-            None => {
-                Err(HardwareError::UnknownError("".to_string()))
-            }
-            Some(a) => {
-                Ok(a)
-            }
-        }?;
+    // pub fn read_i2c_origin(&mut self, type_cn: DriverType) -> Result<(), HardwareError> {
+    //     let i2c_addr = Self::get_i2c_addr_value(type_cn);
+    //     let irq_pin = Self::get_iqr_pin(type_cn);
+    //     let i2c_handler = match self.i2c_handler.as_mut() {
+    //         None => {
+    //             Err(HardwareError::UnknownError("".to_string()))
+    //         }
+    //         Some(a) => {
+    //             Ok(a)
+    //         }
+    //     }?;
 
-        i2c_set_slave(i2c_handler, i2c_addr as u16, type_cn)?;
-        while i2c_read(i2c_handler, 0x12, type_cn)? == 0 || pin_read(irq_pin)? != 0 {}
-        if i2c_read(i2c_handler, 0x00, type_cn)? != 0x00 {
-            return Err(HardwareError::UnknownError("Mauvais retour d'origine".to_string()));
-        }
-        Ok(())
-    }
+    //     i2c_set_slave(i2c_handler, i2c_addr as u16, type_cn)?;
+    //     while i2c_read(i2c_handler, 0x12, type_cn)? == 0 || pin_read(irq_pin)? != 0 {}
+    //     if i2c_read(i2c_handler, 0x00, type_cn)? != 0x00 {
+    //         return Err(HardwareError::UnknownError("Mauvais retour d'origine".to_string()));
+    //     }
+    //     Ok(())
+    // }
     pub fn x_to_bytes(float: f32) -> [u8; 9] {
         let x = ((-6025.0 * float.abs()) as isize + 8539473) as usize;
         let mut bytes: [u8; 9] = [0x08, 0x51, 0x00, 0x01, 0x00, 0x00, 0x00, 0x87, 0xff];

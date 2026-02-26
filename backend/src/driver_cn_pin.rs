@@ -1,17 +1,9 @@
-use std::{
-    thread::sleep,
-    time::Duration,
-};
+use std::{thread::sleep, time::Duration};
 
-use gpio::{
-    Direction, Pin,
-};
+use gpio::{Direction, Pin};
 use sysfs_gpio as gpio;
 
-use common::{
-    definitions::DriverType,
-    error::HardwareError,
-};
+use common::{definitions::DriverType, error::HardwareError};
 
 use crate::error_handler::{pin_direction, pin_export, pin_read, pin_set_active_low, pin_write};
 
@@ -134,7 +126,6 @@ impl DriverCnPin {
 
         return Ok(());
     }
-
 
     fn get_driver_type(&self) -> DriverType {
         return self.driver_type;
