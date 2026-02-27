@@ -126,6 +126,8 @@ La documentation devrait s'ouvrir dans un navigateur. Sinon, elle peut être vis
 
 ## Utilisation
 
+L'accès se fait via deux plateformes : [cockpit](https://192.168.7.3:9090/system) pour le monitoring et le [site web pour le contrôle des bras](http://192.168.7.3/).
+
 ![Interface de contrôle](interface.gif)
 
 ### Apparence et organisation
