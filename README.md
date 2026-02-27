@@ -12,7 +12,13 @@ Ce projet vise à remettre le bassin de test du laboratoire SEACom de l'ISEN au 
 
 ### Partie Matérielle
 
-- todo
+- Imprimer ou découper à la CNC le couvercle du boitier de la carte
+- Ajouter la vitre plexi devant les LED
+- Produire la nouvelle version de la carte électronique
+- acheter les différents composant manquant pour autonomiser le boitier
+	- [prise filtre 230V](https://fr.rs-online.com/web/p/filtres-iec/1676800?searchId=2fb21e5c-5856-4a20-a56e-df45db2b0a76) (ça sera serré mais normalement ça passe)
+    - [Alim 5V](https://fr.rs-online.com/web/p/alimentations-a-decoupage/0413673?searchId=7ffa1f5d-4cfa-4edf-9e52-69dc6d7725a8)
+    - connecteur DB9 de facade
 
 ## Installation
 
