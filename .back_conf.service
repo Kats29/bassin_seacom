@@ -1,0 +1,10 @@
+[Unit]
+Description=Backend du bassin
+After=syslog.target network.target
+[Service]
+Type=simple
+Restart=on-failure
+WorkingDirectory=/home/debian
+ExecStart=/home/debian/backend
+[Install]
+WantedBy=multi-user.target

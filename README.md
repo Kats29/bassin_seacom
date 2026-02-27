@@ -2,6 +2,18 @@
 
 Ce projet vise à remettre le bassin de test du laboratoire SEACom de l'ISEN au goût du jour. Pour cela, une interface Web est déployée sur un serveur Ethernet hébergé sur une carte Beaglebone Black qui communique avec le bassin via un shield customisé.
 
+## TODO
+
+### Partie Logicielle
+
+- écrire une suite de tests exhaustive qui permet de comprendre ce qui doit être envoyé par le backend en fonction des commandes exécutées
+- définir les trames de messages dans la documentation
+- compléter la description de cette documentation (à partir de "Redémarrage des commandes numériques (RESET)")
+
+### Partie Matérielle
+
+- todo
+
 ## Installation
 
 ### Configuration de la carte Beaglebone
@@ -40,13 +52,17 @@ exit
 
 ### Compilation du projet
 
-Clonez et compilez le projet GitHub sur votre ordinateur avec les commandes suivantes, en vous assurant que vous êtes bien sur le même réseau que la Beaglebone :
+La compilation nécessite d'avoir podman, podman-compose et git d'installés sur le pc.
+Clonez et compilez le projet GitHub sur votre ordinateur avec les commandes suivantes :
 
 ```sh
-git clone https://github.com/Mousakaa/bassin_seacom.git
+git clone https://github.com/Kats29/bassin_seacom.git
 cd bassin_seacom
-make
+podman build .
+podman compose run --rm arm-builder
 ```
+
+Une fois que le projet est bien compilé (penser à vérifier les logs pour cela) vous pouvez envoyer la release sur la Beaglebone via le script `./.send.sh`.
 
 Tapez le mot de passe de la Beaglebone lorsqu'il vous est demandé.
 
@@ -59,10 +75,26 @@ ssh debian@192.168.7.3
 Tapez le mot de passe.
 
 ```sh
-sudo ./backend & exit
+sudo systemctl restart backend.service
 ```
 
-Tapez à nouveau le mot de passe.
+Si tout va bien, vous devez avoir quelque chose qui ressemble à ci-dessous en tapant la commande  `sudo systemctl status backend.service` :
+```sh
+● backend.service - Backend du bassin
+     Loaded: loaded (/etc/systemd/system/backend.service; enabled; preset: enabled)
+     Active: active (running) since Fri 2025-03-14 21:15:03 CET; 5s ago
+   Main PID: 2041 (backend)
+      Tasks: 1 (limit: 1024)
+     Memory: 72.0K
+        CPU: 61ms
+     CGroup: /system.slice/backend.service
+             └─2041 /home/debian/backend
+
+Mar 14 21:15:03 bassin systemd[1]: Started backend.service - Backend du bassin.
+Mar 14 21:15:03 bassin backend[2041]: Starting backend...
+```
+
+Si vous souhaitez éditer la configuration du service, elle se trouve ici `/etc/systemd/system/backend.service` et nécessite un redémarrage de systemctl via `sudo systemctl daemon-reload`.
 
 ### Accès à l'interface
 
